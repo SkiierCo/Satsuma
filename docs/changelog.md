@@ -11,7 +11,7 @@ in that game yet. The commit history has the full detail.
   native-program queries. Mesh programs translated with `SET_MESH_SHADER_A` zero, and the
   jump-table fix below never ran in the game. The wrapper now copies the mesh state, forwards
   the native queries, records storage-pointer answers, and won't reuse a mesh pipeline under
-  different mesh settings. Needs testing in Switch Sports (water, UI).
+  different mesh settings. Tested: Switch Sports' water and UI are fixed.
 - **Shader cache flush off by default.** Copying GPU-written pages back before reading
   shaders broke Yoshi again, and Yoshi's zeroed code turned out to be in no cache at all.
   It is now opt-in (`EDEN_NX2_SHADER_FLUSH=1`).

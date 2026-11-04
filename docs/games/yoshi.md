@@ -36,6 +36,14 @@ offsets (`0xf63`), ATOMG exchange (`0x3a8`), SURED adds into 1D buffer images (`
 I2FP with an immediate (`0x845`, a main-menu compute shader). On the 2026-11-03 dump,
 1508 of 1594 programs lower; most of the rest are the zeroed programs above.
 
+## 2026-11-04 tests
+
+- The buffer-cache flush before reading shaders broke the game again; it is off by default.
+- With it off: menus and the opening cutscene work. During the white fade into gameplay the
+  game reads a null pointer (`0x104`) and aborts (2162-0001). Gameplay programs still read
+  as zeros, and their pages are in no GPU cache and in none of the `nx2:gsv` native memory
+  objects. Next: trace which write path is meant to fill those pages.
+
 ## Next
 
 Test the 2026-11-04 build: main menu background, a cutscene, gameplay. Send the log; its

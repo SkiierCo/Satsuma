@@ -33,6 +33,13 @@ errors:
 **Texture handles.** Shader compilation asserts that some texture handles are past the end
 of the texture table (over 1,000 times) and falls back to a 2D guess. Not investigated yet.
 
+## 2026-11-04 test
+
+Water and all UI render. The fixes reached the game once the shader-reuse wrapper kept mesh
+state and native queries. The menu stutters while new shaders compile (about 5 ms each on
+the GPU thread). Pins are missing, with no skipped draw in the log. The Joy-Con 2 stand-in
+only acts while the game declares Joy-Con 2 (style 0x1002); the game later switches to 0x6.
+
 ## Next
 
 Test the 2026-11-04 build: water, UI, a game mode. Send the log; any "Mesh program" lines
