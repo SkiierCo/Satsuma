@@ -248,6 +248,13 @@ bool BufferCache<P>::DMACopy(GPUVAddr src_address, GPUVAddr dest_address, u64 am
     if (!cpu_src_address || !cpu_dest_address) {
         return false;
     }
+    // The copy below takes each range as one run of device memory from its first page. A range
+    // over scattered device pages (Yoshi's shader heap) would read and write the wrong pages; the
+    // DMA engine copies those page by page instead.
+    if (!gpu_memory->IsContinuousRange(src_address, amount) ||
+        !gpu_memory->IsContinuousRange(dest_address, amount)) {
+        return false;
+    }
     const bool source_dirty = IsRegionRegistered(*cpu_src_address, amount);
     const bool dest_dirty = IsRegionRegistered(*cpu_dest_address, amount);
     if (!source_dirty && !dest_dirty) {
@@ -313,7 +320,7 @@ bool BufferCache<P>::DMACopy(GPUVAddr src_address, GPUVAddr dest_address, u64 am
 template <class P>
 bool BufferCache<P>::DMAClear(GPUVAddr dst_address, u64 amount, u32 value) {
     const std::optional<DAddr> cpu_dst_address = gpu_memory->GpuToCpuAddress(dst_address);
-    if (!cpu_dst_address) {
+    if (!cpu_dst_address || !gpu_memory->IsContinuousRange(dst_address, amount)) {
         return false;
     }
     const bool dest_dirty = IsRegionRegistered(*cpu_dst_address, amount);

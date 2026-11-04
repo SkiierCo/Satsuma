@@ -1542,6 +1542,12 @@ void RasterizerVulkan::AccelerateInlineToMemory(GPUVAddr address, size_t copy_si
         gpu_memory->WriteBlock(address, memory.data(), copy_size);
         return;
     }
+    if (copy_size > 0x1000 - (address & 0xfff) && !gpu_memory->IsContinuousRange(address, copy_size)) {
+        // Over scattered device pages the caches below would take the bytes as one run from the
+        // first page: write and invalidate page by page instead.
+        gpu_memory->WriteBlock(address, memory.data(), copy_size);
+        return;
+    }
     gpu_memory->WriteBlockUnsafe(address, memory.data(), copy_size);
     // EDEN_NX2_INLINE_DEFER=0: invalidate every cache at once (for comparisons).
     static const bool defer = [] {
