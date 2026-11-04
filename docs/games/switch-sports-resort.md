@@ -58,7 +58,9 @@ targets) got no memory. They are now backed per block as the GPU writes them. Te
 water back, intro about 3x smoother. The log shows every region created, none failed, and
 4 MiB actually backed.
 
+Later the same day (Fil): graphics look correct and the bowling pins are back. Only the
+Joy-Con 2 issue remains.
+
 ## Next
 
-Test the 2026-11-04 build: water, UI, a game mode. Send the log; any "Mesh program" lines
-explain the mesh layers.
+The Joy-Con 2 prompt: dual Joy-Cons are accepted, but the game asks again after OK.

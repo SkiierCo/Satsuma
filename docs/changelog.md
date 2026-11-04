@@ -20,7 +20,8 @@ in that game yet. The commit history has the full detail.
   trailing zeros. The log now shows each tracked handle that was shifted this way and each
   handle the byte-offset rule changed, to confirm the source in Switch Sports.
 - **Splatoon Raiders: fully playable** (Fil).
-- **Nintendo Switch Sports Resort: playable** (Fil), with Joy-Con 2 limits and graphical issues.
+- **Nintendo Switch Sports Resort: playable** (Fil). Graphics correct and bowling pins back
+  since the GPU-only region fix; the Joy-Con 2 prompt still asks again after OK.
 - **Blit dither bias as on the console.** Native fragment shaders read words 0x10-0x18 of the
   blit constant block as an integer dither bias, which the console leaves zero. Satsuma filled
   them with the texel size and UV scale, and patched only Kirby Air Riders' SMAA resolve by
