@@ -6,6 +6,25 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-04 (third round)
 
+- **12 GiB of console memory, as on the Switch 2.** The 12 GB layout used to add an extra
+  8 GiB pool (20 GiB in all) for the graphics server's own memory (`nx2:gpu` 214 GPU-only
+  and sparse regions). That memory now comes from the system pool inside the 12 GiB, as on
+  the console; games are still told 9.58 GiB. If a region doesn't fit, the log says
+  `nx2:gpu 214 could not allocate`. Needs testing, Mario Kart World first (six 300 MB
+  GPU-only regions).
+- **Only Eglantine, zortos (Lichii) and Satsuma code.** Implementations taken from other
+  sources are removed:
+  - NVIDIA DLSS through NVIDIA Streamline (the "Use NVIDIA DLSS in place of a game's DLSS"
+    setting, its `streamline` user folder and the Streamline headers). FSR 3.1 and the
+    temporal stand-in, from Eglantine, stay; `EDEN_NX2_DLSS_REPLACEMENT` still picks between
+    them.
+  - The once-a-frame re-upload of 64 KiB constant banks (PokeDinner fork;
+    `EDEN_NX2_BANK_REFRESH`, already off in the shipped switches, now does nothing).
+  - The texture descriptor table from nemyu. It is now Lichii's, with Satsuma's own cap on the
+    table size so a desynced command stream can't make it allocate hundreds of GiB.
+    Lichii's table reserves about 16 MiB per table up front.
+  Code from the PokeDinner fork that Lichii also has (GPU-written command list copies, the
+  `0x2bf`, `0x306`, `0x593`, `0x8a5` and `0xf63` lowering) stays. Needs testing.
 - **Cyberpunk 2077 compute shaders.** Five programs were rejected at load. Added: texel
   fetches through a uniform-register handle (`0xf66`) or a register handle (`0x367`), 1D,
   2D, 3D and 1D/2D arrays, level zero or a given level; register-handle surface loads and

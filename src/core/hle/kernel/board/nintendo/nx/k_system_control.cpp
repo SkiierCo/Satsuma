@@ -94,7 +94,9 @@ size_t KSystemControl::Init::GetIntendedMemorySize() {
     case Smc::MemorySize_10GB:
         return 10_GiB;
     case Smc::MemorySize_12GB:
-        return 12_GiB + KSystemControl::Nx2GraphicsServerMemorySize;
+        // The Switch 2's 12 GB, all of it: the graphics server's own memory (nx2:gpu 214
+        // GPU-only and sparse regions) comes from the system pool inside it, as on the console.
+        return 12_GiB;
     }
 }
 

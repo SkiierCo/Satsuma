@@ -163,7 +163,6 @@ public:
         GenerateEdenPath(EdenPath::PlayTimeDir, eden_path / PLAY_TIME_DIR);
         GenerateEdenPath(EdenPath::PostPresetDir, eden_path / POST_PRESET_DIR);
         GenerateEdenPath(EdenPath::PostShaderDir, eden_path / POST_SHADER_DIR);
-        GenerateEdenPath(EdenPath::StreamlineDir, eden_path / STREAMLINE_DIR);
         GenerateEdenPath(EdenPath::SaveDir, eden_path / NAND_DIR);
         GenerateEdenPath(EdenPath::ScreenshotsDir, eden_path / SCREENSHOTS_DIR);
         GenerateEdenPath(EdenPath::SDMCDir, eden_path / SDMC_DIR);

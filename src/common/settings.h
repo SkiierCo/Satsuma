@@ -384,9 +384,6 @@ struct Values {
                                                            Specialization::Percentage,
                                                        true,
                                                        true};
-    /// NVIDIA DLSS (through NVIDIA Streamline, the user's own DLLs) in place of a Switch 2 game's
-    /// DLSS, before AMD FSR 3.1.
-    SwitchableSetting<bool> nvidia_dlss{linkage, false, "nvidia_dlss", Category::Renderer};
     SwitchableSetting<AspectRatio, true> aspect_ratio{linkage,
                                                       AspectRatio::R16_9,
                                                       "aspect_ratio",

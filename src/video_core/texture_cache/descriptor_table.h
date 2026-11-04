@@ -7,23 +7,25 @@
 #pragma once
 
 #include <algorithm>
-#include <bit>
+#include <cstring>
+#include <span>
 #include <vector>
 
 #include "common/alignment.h"
 #include "common/common_types.h"
 #include "common/div_ceil.h"
 #include "common/assert.h"
+#include "core/memory.h"
 #include "video_core/memory_manager.h"
 #include "video_core/rasterizer_interface.h"
 
 namespace VideoCommon {
 
-template <typename T>
+template <typename T, typename Id = u32>
 class DescriptorTable {
 public:
     [[nodiscard]] bool Synchronize(GPUVAddr gpu_addr, u32 limit) noexcept {
-        bool ret = !(current_gpu_addr == gpu_addr && requested_limit == limit);
+        bool ret = !(current_gpu_addr == gpu_addr && current_limit == CapLimit(limit));
         if (ret) {
             Refresh(gpu_addr, limit);
         }
@@ -36,15 +38,29 @@ public:
         invalidated = true;
     }
 
-    [[nodiscard]] std::pair<T, bool> Read(Tegra::MemoryManager const& gpu_memory, u32 index) noexcept {
+    std::span<Id> LiveBoundIds() noexcept {
+        return std::span{bound_ids}.first(
+            (std::min)(bound_ids.size(), size_t{current_limit} + 1));
+    }
+
+    template <class MemoryManager>
+    [[nodiscard]] std::pair<T, bool> Read(const MemoryManager& gpu_memory, u32 index) noexcept {
         DEBUG_ASSERT(index <= current_limit);
-        if (invalidated) [[unlikely]] {
-            std::ranges::fill(read_descriptors, 0);
+        if (invalidated) {
+            ClearReadDescriptors();
             invalidated = false;
         }
         const GPUVAddr gpu_addr = current_gpu_addr + index * sizeof(T);
         std::pair<T, bool> result;
-        gpu_memory.ReadBlockUnsafe(gpu_addr, std::addressof(result.first), sizeof(T));
+        // This runs for every texture and sampler of every draw. An entry within one page is
+        // contiguous in host memory, so a single page lookup replaces the generic block read.
+        const bool one_page =
+            (gpu_addr & Core::Memory::YUZU_PAGEMASK) + sizeof(T) <= Core::Memory::YUZU_PAGESIZE;
+        if (const u8* const host = one_page ? gpu_memory.GetPointer(gpu_addr) : nullptr) {
+            std::memcpy(std::addressof(result.first), host, sizeof(T));
+        } else {
+            gpu_memory.ReadBlockUnsafe(gpu_addr, std::addressof(result.first), sizeof(T));
+        }
         if ((read_descriptors[index / 64] & (1ULL << (index % 64))) != 0) {
             result.second = result.first != descriptors[index];
         } else {
@@ -59,33 +75,42 @@ public:
 
     void Refresh(GPUVAddr gpu_addr, u32 limit) noexcept {
         current_gpu_addr = gpu_addr;
-        requested_limit = limit;
-        // Garbage commands can name any limit, and sizing the table from one near 2^32 asked for
-        // over 100 GiB here. Callers check indices against current_limit, so reads stay inside.
-        current_limit = (std::min)(limit, MaxLimit);
-        // Round up geometrically to keep growth amortized without allocating 16 MiB for every
-        // small table of 32-byte descriptors.
-        const size_t num_descriptors = std::bit_ceil(static_cast<size_t>(current_limit) + 1);
-        size_t old_size = read_descriptors.size();
+        limit = CapLimit(limit);
+        current_limit = limit;
+        // Mario Brothership reallocates a lot of times, so use aggressive pre-alloc sizes
+        // std::vector<T> by default uses quadratic growth, but that isn't even enough to satisfy brothership
+        const size_t num_descriptors = ((limit + 0x80000) & (~0x7ffff)) + 1;
         read_descriptors.resize(Common::DivCeil(num_descriptors, 64U));
-        old_size = (std::min)(old_size, read_descriptors.size());
-        std::fill(read_descriptors.begin(), read_descriptors.begin() + old_size, 0);
+        ClearReadDescriptors();
         invalidated = false;
         //
-        if (descriptors.size() < num_descriptors) {
-            descriptors.resize(num_descriptors);
-        }
+        descriptors.resize(num_descriptors);
+        bound_ids.resize(num_descriptors, Id{0});
     }
 
     std::vector<u64> read_descriptors;
     std::vector<T> descriptors;
+    std::vector<Id> bound_ids;
     GPUVAddr current_gpu_addr{};
     u32 current_limit{};
-    u32 requested_limit{}; ///< the limit as the game set it, before the clamp
     bool invalidated{}; ///< read_descriptors is to be cleared before the next read
 
 private:
-    static constexpr u32 MaxLimit = (1U << 22) - 1;
+    /// A desynced command stream can set any limit (Mario Kart World), and sizing the table from
+    /// one near 2^32 allocates hundreds of GiB. Descriptor indices are checked against
+    /// current_limit, so a capped table keeps every read in range.
+    static constexpr u32 LimitCap = (1U << 22) - 1;
+    static constexpr u32 CapLimit(u32 limit) noexcept {
+        return (std::min)(limit, LimitCap);
+    }
+
+    void ClearReadDescriptors() noexcept {
+        // Reserved capacity is not addressable. A later limit increase clears its new range.
+        const size_t words = (std::min)(read_descriptors.size(), size_t{current_limit} / 64 + 1);
+        std::fill_n(read_descriptors.begin(), words, u64{0});
+        const size_t ids = (std::min)(bound_ids.size(), size_t{current_limit} + 1);
+        std::fill_n(bound_ids.begin(), ids, Id{0});
+    }
 };
 
 } // namespace VideoCommon

@@ -88,7 +88,6 @@ add_executable(tests
     video_core/mesh_shaders.cpp
     video_core/ampere_sports_resort.cpp
     video_core/nx2_rt_report.cpp
-    video_core/descriptor_table_growth.cpp
     video_core/fire_emblem_upscale.cpp
     video_core/ampere_geometry_lowering.cpp
     video_core/ampere_geometry_exit.cpp

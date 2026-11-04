@@ -145,12 +145,6 @@ std::unique_ptr<TranslationMap> InitializeTranslations(QObject* parent) {
     INSERT(Settings, scaling_filter, tr("Window Adapting Filter:"), QString());
     INSERT(Settings, fsr_sharpening_slider, tr("FSR Sharpness:"),
            tr("Determines how sharpened the image will look using FSR's or SGSR's dynamic contrast."));
-    INSERT(Settings, nvidia_dlss, tr("Use NVIDIA DLSS in place of a game's DLSS"),
-           tr("Uses NVIDIA DLSS on GeForce RTX cards in place of a Switch 2 game's own DLSS, "
-              "instead of AMD FSR 3.1.\nNeeds NVIDIA's Streamline loader (sl.interposer.dll and "
-              "sl.dlss.dll) in the user folder's streamline folder, and NVIDIA DLSS "
-              "(nvngx_dlss.dll) there unless the NVIDIA app has downloaded it; NVIDIA's files "
-              "don't ship with Satsuma.\nTakes effect when a game starts."));
     INSERT(Settings, anti_aliasing, tr("Anti-Aliasing Method:"),
            tr("The anti-aliasing method to use.\nSMAA offers the best quality.\nFXAA "
               "can produce a more stable picture in lower resolutions."));
