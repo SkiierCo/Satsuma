@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include "common/alignment.h"
+#include "common/gpu_mapping_trace.h"
 #include "common/assert.h"
 #include "common/logging.h"
 #include "core/core.h"
@@ -223,12 +224,16 @@ void MemoryManager::BindRasterizer(VideoCore::RasterizerInterface* rasterizer_) 
 }
 
 GPUVAddr MemoryManager::Map(GPUVAddr gpu_addr, DAddr dev_addr, std::size_t size, PTEKind kind, bool is_big_pages) {
+    Common::GpuMappingTrace::Add(Common::GpuMappingTrace::Op::GpuMap, gpu_addr, size, dev_addr,
+                                 unique_identifier);
     if (is_big_pages)
         return BigPageTableOp(gpu_addr, dev_addr, size, kind, EntryType::Mapped);
     return PageTableOp(gpu_addr, dev_addr, size, kind, EntryType::Mapped);
 }
 
 GPUVAddr MemoryManager::MapSparse(GPUVAddr gpu_addr, std::size_t size, bool is_big_pages) {
+    Common::GpuMappingTrace::Add(Common::GpuMappingTrace::Op::GpuSparse, gpu_addr, size, 0,
+                                 unique_identifier);
     if (is_big_pages)
         return BigPageTableOp(gpu_addr, 0, size, PTEKind::INVALID, EntryType::Reserved);
     return PageTableOp(gpu_addr, 0, size, PTEKind::INVALID, EntryType::Reserved);
@@ -238,6 +243,8 @@ void MemoryManager::Unmap(GPUVAddr gpu_addr, std::size_t size) {
     if (size == 0) {
         return;
     }
+    Common::GpuMappingTrace::Add(Common::GpuMappingTrace::Op::GpuUnmap, gpu_addr, size, 0,
+                                 unique_identifier);
     GetSubmappedRangeImpl<false>(gpu_addr, size, page_stash);
 
     for (const auto& [map_addr, map_size] : page_stash) {
@@ -494,6 +501,14 @@ std::string MemoryManager::DescribeCachedRegion(GPUVAddr addr, std::size_t size)
         if (rasterizer) {
             out += rasterizer->DescribeCachedRegion(*device, length);
         }
+    }
+    // Mapping history of the first page: which device memory this GPU address pointed at, and
+    // which process address backs that device memory.
+    out += fmt::format("\n  GPU mappings of {:#x}:{}", addr,
+                       Common::GpuMappingTrace::Describe(true, addr));
+    if (const auto device = GpuToCpuAddress(addr)) {
+        out += fmt::format("\n  device mappings of {:#x}:{}", *device,
+                           Common::GpuMappingTrace::Describe(false, *device));
     }
     return out;
 }

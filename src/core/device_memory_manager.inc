@@ -4,6 +4,7 @@
 // SPDX-FileCopyrightText: Copyright 2023 yuzu Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include "common/gpu_mapping_trace.h"
 #include <atomic>
 #include <limits>
 #include <memory>
@@ -205,6 +206,8 @@ void DeviceMemoryManager<Traits>::Free(DAddr start, size_t size) {
 template <typename Traits>
 void DeviceMemoryManager<Traits>::Map(DAddr address, VAddr virtual_address, size_t size, Asid asid,
                                       bool track) {
+    Common::GpuMappingTrace::Add(Common::GpuMappingTrace::Op::DeviceMap, address, size,
+                                 virtual_address, asid.id);
     Core::Memory::Memory* process_memory = registered_processes[asid.id];
     size_t start_page_d = address >> Memory::YUZU_PAGEBITS;
     size_t num_pages = Common::AlignUp(size, Memory::YUZU_PAGESIZE) >> Memory::YUZU_PAGEBITS;
@@ -246,6 +249,7 @@ void DeviceMemoryManager<Traits>::Map(DAddr address, VAddr virtual_address, size
 
 template <typename Traits>
 void DeviceMemoryManager<Traits>::Unmap(DAddr address, size_t size) {
+    Common::GpuMappingTrace::Add(Common::GpuMappingTrace::Op::DeviceUnmap, address, size, 0, 0);
     size_t start_page_d = address >> Memory::YUZU_PAGEBITS;
     size_t num_pages = Common::AlignUp(size, Memory::YUZU_PAGESIZE) >> Memory::YUZU_PAGEBITS;
     device_inter->InvalidateRegion(address, size);
