@@ -99,6 +99,7 @@ public:
         ViewportTransformState,
         ReplaceConstBuffer,
         HasHLEMacroState,
+        CbufStorageBufferPointer,
     };
     /// GetReplaceConstBuffer's answer when there is no replacement.
     static constexpr u32 NoReplacement = ~0U;
@@ -127,6 +128,9 @@ private:
     struct Properties {
         std::array<u32, sizeof(Shader::ProgramHeader) / sizeof(u32)> sph;
         std::array<u32, 8> gp_passthrough_mask; ///< Geometry programs only.
+        std::array<u32, 3> mesh_registers;      ///< Task and mesh programs only.
+        std::array<u32, sizeof(Shader::ProgramHeader) / sizeof(u32)>
+            mesh_primitive_header;              ///< Mesh programs only.
         std::array<u32, 3> workgroup_size;
         Shader::Stage stage;
         u32 start_address;
@@ -171,6 +175,11 @@ public:
     bool HasHLEMacroState() const override;
     std::optional<Shader::ReplaceConstant> GetReplaceConstBuffer(u32 bank, u32 offset) override;
     void Dump(u64 pipeline_hash, u64 shader_hash) override;
+    // Fixed by the program's code, which its unique hash identifies: forwarded, not recorded.
+    u32 NativeProgramSize() const override;
+    bool IsNativeProgram() const override;
+    bool HasNativeInstructions() const override;
+    bool IsCbufStorageBufferPointer(u32 index, u32 offset) override;
 
     /// The reads recorded so far, finished. Call once, after translation.
     [[nodiscard]] TranslationReads TakeReads();

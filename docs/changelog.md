@@ -4,6 +4,20 @@ Changes since the Satsuma v1 source snapshot, newest first. Each entry names the
 was found in; "needs testing" means it builds and passes the tests but has not been tried
 in that game yet. The commit history has the full detail.
 
+## 2026-11-04 (second round)
+
+- **Shader reuse lost mesh and native state.** Translation goes through a recording wrapper
+  (shader reuse) that copied the stage but not the mesh registers, and did not forward the
+  native-program queries. Mesh programs translated with `SET_MESH_SHADER_A` zero, and the
+  jump-table fix below never ran in the game. The wrapper now copies the mesh state, forwards
+  the native queries, records storage-pointer answers, and won't reuse a mesh pipeline under
+  different mesh settings. Needs testing in Switch Sports (water, UI).
+- **Shader cache flush off by default.** Copying GPU-written pages back before reading
+  shaders broke Yoshi again, and Yoshi's zeroed code turned out to be in no cache at all.
+  It is now opt-in (`EDEN_NX2_SHADER_FLUSH=1`).
+- **Indirect-branch errors** now report the table's location, first entries and the
+  program's size.
+
 ## 2026-11-04
 
 ### Audio
@@ -11,7 +25,8 @@ in that game yet. The commit history has the full detail.
 - **Switch 2 hardware audio codec (hwacod).** `hwopus` command 100 now returns a working
   codec session: shared-memory task and completion queues driving a batch Opus decoder.
   It used to be a stub that only logged, and Cyberpunk 2077 rejected its replies. Ported
-  from Lichii build 70 with its tests. Needs testing in Cyberpunk 2077.
+  from Lichii build 70 with its tests. Tested: Cyberpunk 2077 now launches, to a green
+  screen.
 
 ### Graphics
 
@@ -27,7 +42,7 @@ in that game yet. The commit history has the full detail.
   copy and clear paths assumed each range was one unbroken run of memory and wrote the
   wrong pages; they now go page by page. Pages of a shader that only the buffer cache holds
   are copied back before the shader is read (`EDEN_NX2_SHADER_FLUSH=0` turns this off).
-  Needs testing in Yoshi.
+  Tested: Yoshi broke again; the flush is now off by default (see above).
 - **Shader instructions.** Added: uniform-handle texture gathers on 2D arrays, cube maps
   and with texel offsets (`0xf63`); global atomics with any 32-bit operation (`0x3a8`,
   `0x9a8`); surface reductions in every dimension (`0x59f`); integer-to-float with an

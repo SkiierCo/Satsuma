@@ -439,8 +439,9 @@ CFG::AnalysisState CFG::AnalyzeBRX(Block* block, Location pc, Instruction inst, 
                                    FunctionId function_id) {
     const std::optional brx_table{TrackIndirectBranchTable(env, pc, program_start)};
     if (!brx_table) {
-        TrackIndirectBranchTable(env, pc, program_start);
-        throw NotImplementedException("Failed to track indirect branch");
+        throw NotImplementedException("Failed to track indirect branch at {:#x} (native program "
+                                      "size {:#x})",
+                                      pc.Offset(), env.NativeProgramSize());
     }
     const IR::FlowTest flow_test{inst.branch.flow_test};
     const Predicate pred{inst.Pred()};
@@ -466,7 +467,16 @@ CFG::AnalysisState CFG::AnalyzeBRX(Block* block, Location pc, Instruction inst, 
         targets.push_back(target);
     }
     if (targets.empty()) {
-        throw NotImplementedException("Failed to track indirect branch");
+        // Report the table, so a run shows what its entries hold.
+        std::array<u32, 4> first{};
+        for (u32 i = 0; i < first.size(); ++i) {
+            first[i] = env.ReadCbufValue(brx_table->cbuf_index, brx_table->cbuf_offset + i * 4);
+        }
+        throw NotImplementedException(
+            "Unbounded indirect branch table c{}[{:#x}] at {:#x}: entries {:#x} {:#x} {:#x} {:#x}, "
+            "native program size {:#x}, branch offset {}",
+            brx_table->cbuf_index, brx_table->cbuf_offset, pc.Offset(), first[0], first[1],
+            first[2], first[3], native_size, brx_table->branch_offset);
     }
     std::ranges::sort(targets);
     targets.erase(std::unique(targets.begin(), targets.end()), targets.end());

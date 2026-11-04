@@ -386,11 +386,12 @@ namespace {
 
 // Pages of a native program the GPU wrote (Yoshi copies its shaders with the DMA engine) hold
 // their code in the buffer cache only: copy those back first. Only the buffer cache, and only
-// GPU-written pages; EDEN_NX2_SHADER_FLUSH=0 turns it off.
+// GPU-written pages. Off by default (EDEN_NX2_SHADER_FLUSH=1): it broke Yoshi's menus, and
+// Yoshi's zeroed code is in no cache.
 void SyncGpuWrittenCode(Tegra::MemoryManager& gpu_memory, GPUVAddr address, std::size_t size) {
     static const bool enabled = [] {
         const char* value = std::getenv("EDEN_NX2_SHADER_FLUSH");
-        return value == nullptr || value[0] != '0';
+        return value != nullptr && value[0] == '1';
     }();
     if (enabled && gpu_memory.IsMemoryDirty(address, size, VideoCommon::CacheType::BufferCache)) {
         gpu_memory.FlushRegion(address, size, VideoCommon::CacheType::BufferCache);

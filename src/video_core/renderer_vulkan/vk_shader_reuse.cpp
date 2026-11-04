@@ -39,6 +39,8 @@ u32 TranslationReads::Ask(Shader::Environment& env, Query query, u32 arg0, u32 a
     }
     case Query::HasHLEMacroState:
         return env.HasHLEMacroState() ? 1 : 0;
+    case Query::CbufStorageBufferPointer:
+        return env.IsCbufStorageBufferPointer(arg0, arg1) ? 1 : 0;
     }
     UNREACHABLE_MSG("Unknown environment query {}", static_cast<u32>(query));
 }
@@ -49,6 +51,13 @@ TranslationReads::Properties TranslationReads::PropertiesOf(const Shader::Enviro
     // Only geometry programs read the passthrough mask, and only theirs is in the disk cache.
     if (env.ShaderStage() == Shader::Stage::Geometry) {
         result.gp_passthrough_mask = env.GpPassthroughMask();
+    }
+    if (env.ShaderStage() == Shader::Stage::Task || env.ShaderStage() == Shader::Stage::Mesh) {
+        result.mesh_registers = env.MeshRegisters();
+    }
+    if (env.ShaderStage() == Shader::Stage::Mesh) {
+        std::memcpy(result.mesh_primitive_header.data(), &env.MeshPrimitiveHeader(),
+                    sizeof(result.mesh_primitive_header));
     }
     result.workgroup_size = env.WorkgroupSize();
     result.stage = env.ShaderStage();
@@ -92,6 +101,10 @@ RecordingEnvironment::RecordingEnvironment(Shader::Environment& inner_) : inner{
     sph = inner->SPH();
     gp_passthrough_mask = inner->GpPassthroughMask();
     stage = inner->ShaderStage();
+    // Mesh translation reads these through the base accessors; without them Switch Sports'
+    // mesh layers translated with SET_MESH_SHADER_A zero.
+    mesh_registers = inner->MeshRegisters();
+    mesh_primitive_header = inner->MeshPrimitiveHeader();
     start_address = inner->StartAddress();
     is_proprietary_driver = inner->IsProprietaryDriver();
     reads.RecordProperties(*inner);
@@ -139,6 +152,22 @@ std::optional<Shader::ReplaceConstant> RecordingEnvironment::GetReplaceConstBuff
 }
 
 // Recorded although const: disk cache environments answer it differently from live ones.
+u32 RecordingEnvironment::NativeProgramSize() const {
+    return inner->NativeProgramSize();
+}
+
+bool RecordingEnvironment::IsNativeProgram() const {
+    return inner->IsNativeProgram();
+}
+
+bool RecordingEnvironment::HasNativeInstructions() const {
+    return inner->HasNativeInstructions();
+}
+
+bool RecordingEnvironment::IsCbufStorageBufferPointer(u32 index, u32 offset) {
+    return AskAndRecord(TranslationReads::Query::CbufStorageBufferPointer, index, offset) != 0;
+}
+
 bool RecordingEnvironment::HasHLEMacroState() const {
     return AskAndRecord(TranslationReads::Query::HasHLEMacroState, 0) != 0;
 }
