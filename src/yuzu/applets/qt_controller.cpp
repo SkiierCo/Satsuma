@@ -466,19 +466,25 @@ void QtControllerSelectorDialog::SetEmulatedControllers(std::size_t player_index
         emulated_controllers[player_index]->addItem(controller_name);
     };
 
-    if (npad_style_set.fullkey == 1) {
+    // While the game asks for Joy-Con 2, these stand in for one (Core::HID::StandsInForJoyCon2):
+    // list them, or Switch Sports' prompt offered only Handheld and switched dual Joy-Cons to it.
+    const auto stands_in = [&](Core::HID::NpadStyleIndex type) {
+        return Core::HID::StandsInForJoyCon2(npad_style_set, type);
+    };
+
+    if (npad_style_set.fullkey == 1 || stands_in(Core::HID::NpadStyleIndex::Fullkey)) {
         add_item(Core::HID::NpadStyleIndex::Fullkey, tr("Pro Controller"));
     }
 
-    if (npad_style_set.joycon_dual == 1) {
+    if (npad_style_set.joycon_dual == 1 || stands_in(Core::HID::NpadStyleIndex::JoyconDual)) {
         add_item(Core::HID::NpadStyleIndex::JoyconDual, tr("Dual Joycons"));
     }
 
-    if (npad_style_set.joycon_left == 1) {
+    if (npad_style_set.joycon_left == 1 || stands_in(Core::HID::NpadStyleIndex::JoyconLeft)) {
         add_item(Core::HID::NpadStyleIndex::JoyconLeft, tr("Left Joycon"));
     }
 
-    if (npad_style_set.joycon_right == 1) {
+    if (npad_style_set.joycon_right == 1 || stands_in(Core::HID::NpadStyleIndex::JoyconRight)) {
         add_item(Core::HID::NpadStyleIndex::JoyconRight, tr("Right Joycon"));
     }
 

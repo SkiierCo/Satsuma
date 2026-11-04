@@ -25,6 +25,11 @@ in that game yet. The commit history has the full detail.
   - Guest registers written by FMUL (`0x220`) and other opcodes are preserved around the
     uniform-register mirrors.
   - `IGraphicsScaleController` command 1050 is handled; command 10's reply is complete.
+- **Joy-Con 2 stand-in in the controller prompt.** The controller applet built its list and
+  its checks from the game's styles only (Switch Sports: handheld + Joy-Con 2), so dual
+  Joy-Cons were missing and the prompt switched to handheld. The stand-in types (Pro
+  Controller, dual, left and right Joy-Cons) are now listed and accepted there too.
+  Needs testing.
 - **Joy-Con 2 stand-in in handheld.** Switch Sports asks for handheld + Joy-Con 2; with a
   handheld controller it saw a Switch 1 Joy-Con and recommended switching. Handheld now
   stands in too. Needs testing.

@@ -42,11 +42,21 @@ static Core::Frontend::ControllerParameters ConvertToFrontendParameters(
         .border_colors = std::move(identification_colors),
         .enable_explain_text = enable_text,
         .explain_text = std::move(text),
-        .allow_pro_controller = npad_style_set.fullkey == 1,
+        // While the game asks for Joy-Con 2, Pro Controllers and Joy-Cons stand in for one
+        // (Switch Sports: handheld + Joy-Con 2 only, so dual Joy-Cons were refused).
+        .allow_pro_controller = npad_style_set.fullkey == 1 ||
+                                Core::HID::StandsInForJoyCon2(npad_style_set,
+                                                              Core::HID::NpadStyleIndex::Fullkey),
         .allow_handheld = npad_style_set.handheld == 1,
-        .allow_dual_joycons = npad_style_set.joycon_dual == 1,
-        .allow_left_joycon = npad_style_set.joycon_left == 1,
-        .allow_right_joycon = npad_style_set.joycon_right == 1,
+        .allow_dual_joycons = npad_style_set.joycon_dual == 1 ||
+                              Core::HID::StandsInForJoyCon2(npad_style_set,
+                                                            Core::HID::NpadStyleIndex::JoyconDual),
+        .allow_left_joycon = npad_style_set.joycon_left == 1 ||
+                             Core::HID::StandsInForJoyCon2(npad_style_set,
+                                                           Core::HID::NpadStyleIndex::JoyconLeft),
+        .allow_right_joycon = npad_style_set.joycon_right == 1 ||
+                              Core::HID::StandsInForJoyCon2(npad_style_set,
+                                                            Core::HID::NpadStyleIndex::JoyconRight),
     };
 }
 
