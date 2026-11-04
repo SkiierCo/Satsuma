@@ -35,9 +35,9 @@ the executable switches to portable mode.
 
 ## Credits
 
-Satsuma is derived from [Eglantine](https://github.com/Djihads80/Eglantine),
-itself based on [Eden](https://git.eden-emu.dev/eden-emu/eden), yuzu and Sudachi.
-Their copyright notices are kept in the source.
+Satsuma is derived from [Eglantine](https://github.com/Djihads80/Eglantine), Updated and
+maintained by Fil, Some patches and additions are thanks to efforts by Selevet, Zortos, and
+Penis6 respectively
 
 ## License
 
