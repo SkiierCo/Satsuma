@@ -377,10 +377,23 @@ Tegra::Texture::TICEntry GenericEnvironment::ReadTextureInfo(GPUVAddr tic_addr, 
 
 namespace {
 
+// Pages of a native program the GPU wrote (Yoshi copies its shaders with the DMA engine) hold
+// their code in the buffer cache only: copy those back first. Only the buffer cache, and only
+// GPU-written pages; EDEN_NX2_SHADER_FLUSH=0 turns it off.
+void SyncGpuWrittenCode(Tegra::MemoryManager& gpu_memory, GPUVAddr address, std::size_t size) {
+    static const bool enabled = [] {
+        const char* value = std::getenv("EDEN_NX2_SHADER_FLUSH");
+        return value == nullptr || value[0] != '0';
+    }();
+    if (enabled && gpu_memory.IsMemoryDirty(address, size, VideoCommon::CacheType::BufferCache)) {
+        gpu_memory.FlushRegion(address, size, VideoCommon::CacheType::BufferCache);
+    }
+}
+
 // Reads a native program a 4 KiB page at a time instead of one 16-byte instruction at a time.
-// The reads do not flush the GPU caches first (ReadBlockUnsafe): the previous per-instruction
-// ReadBlock did, once per instruction. An instruction that is not inside a fully mapped page is
-// left to the caller.
+// Apart from GPU-written pages (above), the reads do not flush the GPU caches first
+// (ReadBlockUnsafe): the previous per-instruction ReadBlock did, once per instruction. An
+// instruction that is not inside a fully mapped page is left to the caller.
 class NativeInstructionReader {
 public:
     using Instruction = Shader::Ampere::Instruction;
@@ -415,6 +428,7 @@ private:
         page_begin = address;
         page_end = address;
         if (length >= sizeof(Instruction) && gpu_memory.IsFullyMappedRange(address, length)) {
+            SyncGpuWrittenCode(gpu_memory, address, length);
             gpu_memory.ReadBlockUnsafe(address, page.data(), length);
             page_end = next_page;
         }
@@ -485,6 +499,7 @@ std::shared_ptr<const LoweredNativeCode> GenericEnvironment::LowerNativeCode(u32
                 if (!native.empty()) break;
                 throw Shader::RuntimeError("Unmapped native shader instruction at {:#x}", address);
             }
+            SyncGpuWrittenCode(*gpu_memory, address, sizeof(instruction));
             gpu_memory->ReadBlockUnsafe(address, &instruction, sizeof(instruction));
         }
         native.push_back(instruction);
