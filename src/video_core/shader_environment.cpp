@@ -377,6 +377,15 @@ Tegra::Texture::TICEntry GenericEnvironment::ReadTextureInfo(GPUVAddr tic_addr, 
     const auto handle{Tegra::Texture::TexturePair(raw, via_header_index)};
     const u32 index{Tegra::Texture::TextureHeaderIndex(handle.first, tic_limit,
                                                        gpu_memory->UsesNativeTiling())};
+    if (index != handle.first) {
+        // NVN2 builds handles from pool indices (texture | sampler << 20), never byte offsets:
+        // log what the shader handed us, to find where the x32 comes from.
+        static std::atomic<u32> logged{};
+        if (logged.fetch_add(1, std::memory_order_relaxed) < 64) {
+            LOG_WARNING(HW_GPU, "Texture handle {:#x} past the pool (limit {}) read as byte offset {}",
+                        raw, tic_limit, index);
+        }
+    }
     ASSERT(index <= tic_limit);
     const GPUVAddr descriptor_addr{tic_addr + index * sizeof(Tegra::Texture::TICEntry)};
     Tegra::Texture::TICEntry entry;

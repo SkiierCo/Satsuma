@@ -14,8 +14,11 @@
 #include "common/container/unordered_map.h"
 #include <tuple>
 #include <limits>
+#include <mutex>
+#include <set>
 #include <boost/container/small_vector.hpp>
 
+#include "common/logging.h"
 #include "common/settings.h"
 #include "shader_recompiler/environment.h"
 #include "shader_recompiler/frontend/ir/basic_block.h"
@@ -984,6 +987,22 @@ u32 GetTextureHandle(Environment& env, const ConstBufferAddr& cbuf) {
     const u32 lhs_raw{env.ReadCbufValue(cbuf.index, cbuf.offset) << cbuf.shift_left};
     const u32 rhs_raw{env.ReadCbufValue(secondary_index, secondary_offset)
                       << cbuf.secondary_shift_left};
+    // Where shifted handles come from: a handle masked with AND is tracked as the constant shifted
+    // left by the mask's trailing zeros. Logged once per location to find the source of the
+    // handles that read past the texture pool (Switch Sports' scenery; see TextureHeaderIndex).
+    if (cbuf.shift_left != 0 || (cbuf.has_secondary && cbuf.secondary_shift_left != 0)) {
+        static std::mutex mutex;
+        static std::set<std::tuple<u32, u32, u32, u32, u32, u32>> logged;
+        std::scoped_lock lock{mutex};
+        if (logged.size() < 64 &&
+            logged.emplace(cbuf.index, cbuf.offset, cbuf.shift_left, secondary_index,
+                           secondary_offset, cbuf.secondary_shift_left)
+                .second) {
+            LOG_INFO(Shader, "Texture handle c{}[{:#x}] << {} | c{}[{:#x}] << {}: {:#x} | {:#x} = {:#x}",
+                     cbuf.index, cbuf.offset, cbuf.shift_left, secondary_index, secondary_offset,
+                     cbuf.secondary_shift_left, lhs_raw, rhs_raw, lhs_raw | rhs_raw);
+        }
+    }
     return lhs_raw | rhs_raw;
 }
 
