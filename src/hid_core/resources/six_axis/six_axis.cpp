@@ -246,6 +246,17 @@ Result SixAxis::GetSixAxisSensorIcInformation(
     // TODO: Request this data to the controller. On error return 0xd8ca
     const auto& sixaxis = GetSixaxisState(sixaxis_handle);
     ic_information = sixaxis.ic_information;
+    if (ic_information.angular_rate == 0.0f && ic_information.acceleration_range == 0.0f) {
+        // Nothing from the controller: report a typical sensor (+-2000 dps, +-8 g) with identity
+        // calibration matrices. Switch Sports aborts setting up motion on the all-zero answer.
+        constexpr std::array<f32, 9> identity{1, 0, 0, 0, 1, 0, 0, 0, 1};
+        ic_information.angular_rate = 2000.0f;
+        ic_information.unknown_gyro_data2 = identity;
+        ic_information.unknown_gyro_data3 = identity;
+        ic_information.acceleration_range = 8.0f;
+        ic_information.unknown_accel_data2 = identity;
+        ic_information.unknown_accel_data3 = identity;
+    }
     return ResultSuccess;
 }
 
