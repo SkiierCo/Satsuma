@@ -15,13 +15,6 @@
 
 <h4 align="center">An open-source Nintendo Switch 2 emulator for Windows, written in C++.</h4>
 
-<p align="center">
-  <a href="#status">Status</a> |
-  <a href="#building">Building</a> |
-  <a href="#credits">Credits</a> |
-  <a href="#license">License</a>
-</p>
-
 ## Status
 
 Satsuma is in active development. Switch 2 titles boot and multiple games are
