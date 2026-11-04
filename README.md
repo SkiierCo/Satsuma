@@ -21,6 +21,9 @@ Satsuma is in active development. Switch 2 titles boot and multiple games are
 playable from start to finish; others still have rendering issues or straight up
 unplayable but I'm working through multiple games at a time.
 
+See the [compatibility list](docs/compatibility.md) for each game's status and the
+[change log](docs/changelog.md) for what changed.
+
 Satsuma does not include keys, firmware or games. You need to dump them from your
 own console.
 
