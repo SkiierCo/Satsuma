@@ -40,3 +40,6 @@ EDEN_NX2_DMA_SCATTER=0
 # Per game: EDEN_NX2_VSYNC_HZ_<program ID> overrides EDEN_NX2_VSYNC_HZ for that game.
 # Super Mario Bros. Wonder capped at 67.
 EDEN_NX2_VSYNC_HZ_010015100B514000=67
+
+# Switch 2 Editions of Switch 1 games: installed DLC laid over the game files; =0 turns it off.
+#EDEN_NX2_EDITION_DLC=0

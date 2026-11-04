@@ -15,7 +15,11 @@
 #include "core/file_sys/content_archive.h"
 #include "core/file_sys/control_metadata.h"
 #include "core/file_sys/patch_manager.h"
+#include "core/file_sys/common_funcs.h"
+#include "core/file_sys/loose_dlc.h"
 #include "core/file_sys/loose_updates.h"
+#include "core/file_sys/registered_cache.h"
+#include "core/file_sys/vfs/vfs_layered.h"
 #include "core/file_sys/romfs.h"
 #include "core/file_sys/romfs_factory.h"
 #include "core/hle/kernel/k_page_table.h"
@@ -162,6 +166,69 @@ std::vector<FileSys::VirtualDir> FindSidecarDirs(const FileSys::VirtualDir& exef
         dir = parent;
     }
     return dirs;
+}
+
+} // namespace
+
+namespace {
+
+FileSys::VirtualFile LayerSwitch2EditionDlc(Core::System& system,
+                                            const FileSys::ProgramMetadata& metadata,
+                                            FileSys::VirtualFile romfs) {
+    static const bool enabled = [] {
+        const char* value = std::getenv("EDEN_NX2_EDITION_DLC");
+        return value == nullptr || value[0] != '0';
+    }();
+    const u64 title_id = metadata.GetTitleID();
+    if (!enabled || !metadata.IsSwitch2() || (title_id >> 56) != 0x01) {
+        return romfs;
+    }
+    const auto& disabled = Settings::values.disabled_addons[title_id];
+    if (std::find(disabled.begin(), disabled.end(), "DLC") != disabled.end()) {
+        return romfs;
+    }
+    const u64 base = FileSys::GetBaseTitleID(title_id);
+    const auto nand = system.GetFileSystemController().GetUserNANDContentDirectory();
+    std::vector<std::pair<u64, FileSys::VirtualFile>> dlc;
+    for (const u64 id : FileSys::ListInstalledLooseDlc(nand)) {
+        if (FileSys::GetBaseTitleID(id) == base) {
+            if (auto file = FileSys::OpenInstalledLooseDlc(nand, id)) {
+                dlc.emplace_back(id, std::move(file));
+            }
+        }
+    }
+    const auto& provider = system.GetContentProvider();
+    for (const auto& entry :
+         provider.ListEntriesFilter(FileSys::TitleType::AOC, FileSys::ContentRecordType::Data)) {
+        if (FileSys::GetBaseTitleID(entry.title_id) != base ||
+            std::any_of(dlc.begin(), dlc.end(),
+                        [&](const auto& item) { return item.first == entry.title_id; })) {
+            continue;
+        }
+        if (const auto nca = provider.GetEntry(entry.title_id, FileSys::ContentRecordType::Data);
+            nca != nullptr && nca->GetRomFS() != nullptr) {
+            dlc.emplace_back(entry.title_id, nca->GetRomFS());
+        }
+    }
+    if (dlc.empty()) {
+        return romfs;
+    }
+    // Later add-ons over earlier ones, all over the game's files.
+    std::sort(dlc.begin(), dlc.end(),
+              [](const auto& a, const auto& b) { return a.first > b.first; });
+    std::vector<FileSys::VirtualDir> layers;
+    for (const auto& [id, file] : dlc) {
+        if (auto dir = FileSys::ExtractRomFS(file)) {
+            LOG_INFO(Loader, "Switch 2 Edition: add-on {:016X} laid over the game's RomFS", id);
+            layers.push_back(std::move(dir));
+        }
+    }
+    auto game = FileSys::ExtractRomFS(romfs);
+    if (layers.empty() || game == nullptr) {
+        return romfs;
+    }
+    layers.push_back(std::move(game));
+    return FileSys::CreateRomFS(FileSys::LayeredVfsDirectory::MakeLayeredDirectory(std::move(layers)));
 }
 
 } // namespace
@@ -357,6 +424,14 @@ AppLoader_DeconstructedRomDirectory::LoadResult AppLoader_DeconstructedRomDirect
         return {result2, {}};
     }
     metadata.Print();
+
+    // A Switch 2 Edition of a Switch 1 game (Switch 1 program ID, Switch 2 program): its upgrade
+    // DLC holds files laid out like the game's own (Super Mario Bros. Wonder's Meetup in
+    // Bellabel Park), and the game only mounts its RomFS, never the add-on content, so the DLC
+    // goes over the game's files. EDEN_NX2_EDITION_DLC=0 leaves them as they are.
+    if (romfs != nullptr) {
+        romfs = LayerSwitch2EditionDlc(system, metadata, std::move(romfs));
+    }
 
     // Loose-ExeFS loads bypass the NCA/NSP loaders, which are the ones that normally apply
     // LayeredFS to the RomFS; apply it here so mods in user/load/<titleid>/ work too.

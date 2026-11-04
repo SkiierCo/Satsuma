@@ -6,6 +6,11 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-04 (third round)
 
+- **Switch 2 Edition DLC laid over the game's files.** Super Mario Bros. Wonder's Switch 2
+  Edition DLC (Meetup in Bellabel Park) holds files laid out like the game's own, and the game
+  only mounts its RomFS, never the add-on content, so it never saw the DLC. When a Switch 1
+  game runs a Switch 2 program, its installed DLC (NAND or registered) now goes over the
+  game's files. `EDEN_NX2_EDITION_DLC=0` turns it off. Needs testing in Wonder.
 - **Per-game display rate.** `EDEN_NX2_VSYNC_HZ_<program ID>` overrides `EDEN_NX2_VSYNC_HZ`
   for one game. The shipped switches cap Super Mario Bros. Wonder at 67 under the 120 Hz
   default (Fil's request).
