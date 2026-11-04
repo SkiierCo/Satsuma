@@ -1,6 +1,6 @@
 # Nintendo Switch Sports Resort
 
-Program ID: `04008E001F098000`. Status: in game (see [compatibility](../compatibility.md)).
+Program ID: `04008E001F098000`. Status: playable (see [compatibility](../compatibility.md)).
 
 ## Symptoms
 
@@ -39,6 +39,17 @@ Water and all UI render. The fixes reached the game once the shader-reuse wrappe
 state and native queries. The menu stutters while new shaders compile (about 5 ms each on
 the GPU thread). Pins are missing, with no skipped draw in the log. The Joy-Con 2 stand-in
 only acts while the game declares Joy-Con 2 (style 0x1002); the game later switches to 0x6.
+
+## 2026-11-04 test (later build)
+
+Playable (Fil): game modes play fine; performance is good after the intro. Joy-Con 2 works
+only through the stand-in. Rendering is off, and the water looks wrong again.
+
+The texture handles past the pool are one value, `0x96c6b000` (texture field `0x6b000`,
+sampler `0x96c`; pool limit 33067), read as byte offset 13696. No tracked handle was shifted
+by an AND mask, so the value comes from the game's own data, not from Satsuma's handle
+tracker. Switch Sports' NVN driver builds handles as `texture | sampler << 20`; what decides
+the texture field is how the driver registers textures in the pool, not checked yet.
 
 ## Next
 

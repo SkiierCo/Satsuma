@@ -18,7 +18,7 @@ NVIDIA GPU and the Vulkan renderer.
 | Fire Emblem: Fortune's Weave | `04007EF01F8AE000` | In game | Renders since the TXD lowering; faces fixed; 30 FPS docked as the game requests. FSR 3.1 upscaling runs. A white-3D gameplay fix (FSET with uniform operand) needs testing. | — |
 | Splatoon Raiders | `0400380020056000` | Playable | Fully playable (Fil, 2026-11-04). | — |
 | Mario Kart World | `0400C3F00006E000` | In game | Performance much better. Crashes consistently: the command stream desyncs (unbound subchannel, bad syncpoint IDs, then garbage GPU state); also seen on 2026-11-03 at 169 s. | — |
-| Nintendo Switch Sports Resort | `04008E001F098000` | In game | Water and UI fixed. Intro stutters, then smooth. The Joy-Con 2 prompt accepts dual Joy-Cons but asks again after OK. Pins missing. | [Details](games/switch-sports-resort.md) |
+| Nintendo Switch Sports Resort | `04008E001F098000` | Playable | Plays fine (Fil, 2026-11-04). Joy-Con 2 limits (stand-in only; the prompt asks again after OK). Graphical issues: water looks wrong again, other rendering off. Intro stutters, then performance is good. | [Details](games/switch-sports-resort.md) |
 | Yoshi | `0400245021D2C000` | In game | Reaches gameplay again; gameplay renders black and many UI elements are missing. Gameplay shaders still read as zeros. | [Details](games/yoshi.md) |
 | Cyberpunk 2077 | `0400DDB020648000` | Boots | Launches to a green screen. Five rejected compute shaders now lower; needs testing. | [Details](games/cyberpunk-2077.md) |
 | Kirby Air Riders | `040077201BE50000` | Boots | Launches since the built-in font fix (was aborting with 2083-0419); black screen. | — |
