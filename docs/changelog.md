@@ -25,6 +25,9 @@ in that game yet. The commit history has the full detail.
   - Guest registers written by FMUL (`0x220`) and other opcodes are preserved around the
     uniform-register mirrors.
   - `IGraphicsScaleController` command 1050 is handled; command 10's reply is complete.
+- **Switch 2 built-in fonts.** `GetBuiltInFontData` answered size 0 once the Switch 1 font
+  memory was full, and Kirby Air Riders aborted (2083-0419) asking for it. The plain fonts now
+  get their own shared memory. From Lichii build 70. Needs testing in Kirby.
 - **Joy-Con 2 stand-in in the controller prompt.** The controller applet built its list and
   its checks from the game's styles only (Switch Sports: handheld + Joy-Con 2), so dual
   Joy-Cons were missing and the prompt switched to handheld. The stand-in types (Pro
