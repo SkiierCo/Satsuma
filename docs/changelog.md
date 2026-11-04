@@ -25,6 +25,10 @@ in that game yet. The commit history has the full detail.
   - Guest registers written by FMUL (`0x220`) and other opcodes are preserved around the
     uniform-register mirrors.
   - `IGraphicsScaleController` command 1050 is handled; command 10's reply is complete.
+- **Texture handles holding a byte offset.** Some Switch 2 bindless handles (Switch Sports'
+  scenery) hold the texture header's byte offset (index × 32) instead of its index, and
+  pointed past the texture table. On Switch 2 they are read as an offset when the index is
+  out of range and the offset is inside. From Lichii build 70. Needs testing in Switch Sports.
 - **Register-handle surface loads and stores** (`0x998`, `0x99c`; The Duskbloods), from
   Lichii build 70, with its tests.
 

@@ -59,6 +59,7 @@ add_executable(tests
     video_core/ampere_sured.cpp
     video_core/blit_dither.cpp
     video_core/ampere_bindless_surfaces.cpp
+    video_core/native_texture_header_index.cpp
     audio_core/batch_decoder.cpp
     audio_core/hardware_audio_codec.cpp
     core/system_test_context.h
