@@ -13,7 +13,7 @@
   <b>Satsuma</b>
 </h1>
 
-<h4 align="center">An open-source Nintendo Switch 2 emulator for Windows, written in C++.</h4>
+<h4 align="center">An open-source Nintendo Switch 2 emulator for Windows.</h4>
 
 ## Status
 
