@@ -467,18 +467,23 @@ bool DmaPusher::Step() {
         // (the split only starts with unsafe reads; the settings can change mid-game).
         const bool use_safe = !VideoCommon::GpuSplit::Get().Active() &&
                               (Settings::IsDMALevelDefault() ? Settings::IsGPULevelHigh() : Settings::IsDMALevelSafe());
+        report_entry_address = dma_state.dma_get;
+        report_entry_words = static_cast<u32>(header.size);
         if (use_safe) {
+            report_entry_source = "safe read";
             Tegra::Memory::GpuGuestMemory<Tegra::CommandHeader, Tegra::Memory::GuestMemoryFlags::SafeRead>headers(memory_manager, dma_state.dma_get, header.size, &command_headers);
             const std::span<const CommandHeader> commands{headers.data(), headers.size()};
             RecordParsedEntry(header, commands);
             command_resume_offset +=
                 ProcessCommands(commands.subspan(command_resume_offset), command_resume_offset);
         } else if (ReadGpuWrittenCommands(dma_state.dma_get, static_cast<u32>(header.size))) {
+            report_entry_source = "GPU-written list copy";
             const std::span<const CommandHeader> commands{command_headers.data(), header.size};
             RecordParsedEntry(header, commands);
             command_resume_offset +=
                 ProcessCommands(commands.subspan(command_resume_offset), command_resume_offset);
         } else {
+            report_entry_source = "unsafe read";
             FlushGpuWrittenCommands(dma_state.dma_get, size_t{header.size} * sizeof(u32));
             Tegra::Memory::GpuGuestMemory<Tegra::CommandHeader, Tegra::Memory::GuestMemoryFlags::UnsafeRead>headers(memory_manager, dma_state.dma_get, header.size, &command_headers);
             const std::span<const CommandHeader> commands{headers.data(), headers.size()};
@@ -949,10 +954,42 @@ void DmaPusher::FlushGpuWrittenCommands(GPUVAddr address, size_t size) {
 void DmaPusher::ReportUnboundSubchannel() {
     // Methods sent to a subchannel with no engine (no SetObject yet) are dropped.
     static std::atomic<u32> reported{};
-    if (reported.fetch_add(1) < 8) {
+    const u32 count = reported.fetch_add(1);
+    if (count < 8) {
         LOG_WARNING(HW_GPU, "Dropping method {:#x} on unbound subchannel {}", dma_state.method,
                     dma_state.subchannel);
     }
+    // Mario Kart World desyncs into methods on unbound subchannels, then garbage state. Once,
+    // record where the entry came from and whether the words processed match guest memory now.
+    if (count != 0 || report_entry_words == 0 || report_entry_words > command_headers.size()) {
+        return;
+    }
+    std::vector<u32> now(report_entry_words);
+    memory_manager.ReadBlockUnsafe(report_entry_address, now.data(), now.size() * sizeof(u32));
+    u32 differing = 0;
+    u32 first_difference = report_entry_words;
+    for (u32 i = 0; i < report_entry_words; ++i) {
+        if (now[i] != command_headers[i].argument) {
+            first_difference = (std::min)(first_difference, i);
+            ++differing;
+        }
+    }
+    const u32 around = first_difference < report_entry_words ? first_difference : 0;
+    const u32 begin = around > 8 ? around - 8 : 0;
+    const u32 end = (std::min)(report_entry_words, begin + 24);
+    std::vector<u32> processed;
+    for (u32 i = begin; i < end; ++i) {
+        processed.push_back(command_headers[i].argument);
+    }
+    LOG_ERROR(HW_GPU,
+              "Command stream desync: entry {:#x} ({} words) from {}; {} words now differ in "
+              "memory (first at word {}). Words {}-{} processed: {:08x}; in memory now: {:08x}. "
+              "Entry pages:{}",
+              report_entry_address, report_entry_words, report_entry_source, differing,
+              first_difference < report_entry_words ? static_cast<s64>(first_difference) : s64{-1},
+              begin, end, fmt::join(processed, " "),
+              fmt::join(std::span{now}.subspan(begin, end - begin), " "),
+              memory_manager.DescribeCachedRegion(report_entry_address, size_t{report_entry_words} * 4));
 }
 
 void DmaPusher::CheckSubmitHash(const CommandListHeader& header, u64 submit_hash) {

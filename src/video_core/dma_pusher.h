@@ -207,6 +207,10 @@ private:
 
 public:
     Common::ScratchBuffer<CommandHeader> command_headers; ///< Buffer for list of commands fetched at once
+    /// The entry being processed, for the desync report (ReportUnboundSubchannel).
+    GPUVAddr report_entry_address{};
+    u32 report_entry_words{};
+    const char* report_entry_source{"none"};
 
     std::queue<CommandList> dma_pushbuffer; ///< Queue of command lists to be processed
     std::size_t dma_pushbuffer_subindex{};  ///< Index within a command list within the pushbuffer
