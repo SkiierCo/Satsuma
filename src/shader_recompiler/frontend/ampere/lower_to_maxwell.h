@@ -1140,42 +1140,53 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
                 (u64{offset >> 2} << 30) | (u64{operation} << 52));
             break;
         }
-        case 0x3a8: { // ATOMG.E.ADD.STRONG.GPU U32 at a 64-bit register address plus an offset.
+        case 0x3a8: { // ATOMG.E.<op>.STRONG.GPU 32-bit at a 64-bit register address plus an offset.
+            // Operation at 87-90 (ADD..EXCH; Yoshi exchanges) and size at 73-75 (U32, S32) are
+            // numbered as Maxwell ATOM's (52-55, 49-51).
             const u32 address = insn.Bits(24, 8);
             const s32 offset = static_cast<s32>(insn.Bits(40, 24) << 8) >> 8;
-            if (insn.words[2] != 0x001ee100 || (address & 1) || address >= 246 ||
-                offset < -0x80000 || offset > 0x7ffff)
+            const u32 operation = insn.Bits(87, 4), size = insn.Bits(73, 3);
+            if ((insn.words[2] & ~0x07800e00U) != 0x001ee100 || operation > 8 || size > 1 ||
+                (address & 1) || address >= 246 || offset < -0x80000 || offset > 0x7ffff)
                 return fail(index, "native global atomic register mode");
             emit(0xed00000000000000ULL | predicate | dest | (u64{address} << 8) |
                 (u64{insn.Bits(32, 8)} << 20) | (u64{static_cast<u32>(offset) & 0xfffff} << 28) |
-                (u64{1} << 48));
+                (u64{1} << 48) | (u64{size} << 49) | (u64{operation} << 52));
             break;
         }
         case 0x9a8: { // ATOMG.E.ADD.STRONG.GPU U32 through a uniform pointer plus an offset.
             const u32 address = uniform_register(insn.Bits(64, 6));
             // The native offset is 24 bits signed; Maxwell ATOM keeps 20 (bits 28-47).
             const s32 offset = static_cast<s32>(insn.Bits(40, 24) << 8) >> 8;
+            const u32 operation = insn.Bits(87, 4), size = insn.Bits(73, 3);
             if (insn.Bits(24, 8) != 255 || offset < -(1 << 19) || offset >= (1 << 19) ||
-                (insn.words[2] & ~0x3fU) != 0x081ee140 || address == ~0U || (address & 1))
+                (insn.words[2] & ~0x07800e3fU) != 0x081ee140 || operation > 8 || size > 1 ||
+                address == ~0U || (address & 1))
                 return fail(index, "native global atomic mode");
             emit(0xed00000000000000ULL | predicate | dest | (u64{address} << 8) |
                 (u64{insn.Bits(32, 8)} << 20) | (u64{static_cast<u32>(offset) & 0xfffff} << 28) |
-                (u64{1} << 48));
+                (u64{1} << 48) | (u64{size} << 49) | (u64{operation} << 52));
             break;
         }
-        case 0x59f: {
+        case 0x59f: { // SURED: dimension at 61-63, reduction at 87-90 and size at 73-75 (U32,
+            // S32), all numbered as Maxwell SURED's (Yoshi adds into a 1D buffer image).
             const u32 binding = insn.Bits(54, 5), offset = insn.Bits(40, 14);
             const u32 coordinate = insn.Bits(24, 8), data = insn.Bits(32, 8);
             const u32 first_reserved = uses_uniform_bank ? 216U : 246U;
-            if (insn.words[2] != 0x0010e000 || insn.Bits(61, 3) != 3 ||
-                insn.Bits(59, 2) || binding >= 18 || offset > 0x1fff ||
-                coordinate >= first_reserved - 1 || (data >= first_reserved && data != 255))
+            const u32 dimension = insn.Bits(61, 3);
+            const u32 operation = insn.Bits(87, 4), size = insn.Bits(73, 3);
+            constexpr std::array<u32, 6> coordinate_count{1, 1, 2, 2, 3, 3};
+            if ((insn.words[2] & ~0x07800e00U) != 0x0010e000 || dimension > 5 || operation > 7 ||
+                size > 1 || insn.Bits(59, 2) || binding >= 18 || offset > 0x1fff ||
+                coordinate + coordinate_count[dimension] > first_reserved ||
+                (data >= first_reserved && data != 255))
                 return fail(index, "native surface reduction mode");
             if (result.required_texture_buffer != ~0U && result.required_texture_buffer != binding)
                 return fail(index, "native surface descriptor buffer conflict");
             result.required_texture_buffer = binding;
             emit(0xeb40000000000000ULL | predicate | data | (u64{coordinate} << 8) |
-                 (u64{3} << 33) | (u64{offset} << 36) | (u64{1} << 51));
+                 (u64{size} << 20) | (u64{operation} << 24) | (u64{dimension} << 33) |
+                 (u64{offset} << 36) | (u64{1} << 51));
             break;
         }
         case 0xb97: { // SULD.P.IGN, direct descriptor, channel mask at 72-75.

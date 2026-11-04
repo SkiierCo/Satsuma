@@ -137,8 +137,9 @@ TEST_CASE("Ampere SURED preserves predicate and register operands",
 
 TEST_CASE("Ampere SURED rejects unsupported formats and descriptor conflicts",
           "[video_core][ampere][sured]") {
-    const u32 bit = GENERATE(59U, 60U, 61U, 62U, 63U, 72U, 73U, 74U, 75U,
-                            77U, 78U, 79U, 80U, 84U, 85U, 86U, 87U, 88U, 89U);
+    // Dimension 7, sizes past S32 and the other fixed bits; 61, 62, 73 and 87-89 select
+    // supported dimensions, S32 and reductions (below).
+    const u32 bit = GENERATE(59U, 60U, 63U, 72U, 74U, 75U, 77U, 78U, 79U, 80U, 84U, 85U, 86U);
     std::array code{captured, exit_instruction};
     code[0].words[bit / 32] ^= 1U << (bit % 32);
     REQUIRE_FALSE(static_cast<bool>(LowerToMaxwell(code)));
@@ -157,5 +158,21 @@ TEST_CASE("Ampere SURED rejects unsupported formats and descriptor conflicts",
     std::array conflicting{captured, captured, exit_instruction};
     conflicting[1].words[1] |= 1U << 22;
     REQUIRE_FALSE(static_cast<bool>(LowerToMaxwell(conflicting)));
+}
+TEST_CASE("Ampere SURED keeps its dimension, reduction and size",
+          "[video_core][ampere][sured]") {
+    const u32 dimension = GENERATE(0U, 1U, 2U, 3U, 4U, 5U);
+    const u32 operation = GENERATE(0U, 1U, 2U, 4U, 7U);
+    const u32 size = GENERATE(0U, 1U);
+    std::array code{captured, exit_instruction};
+    code[0].words[1] = (code[0].words[1] & ~(7U << 29)) | (dimension << 29);
+    code[0].words[2] |= (operation << 23) | (size << 9);
+    const auto lowered = LowerToMaxwell(code);
+    REQUIRE(static_cast<bool>(lowered));
+    REQUIRE(lowered.instructions.front() ==
+            (0xeb4800c000000000ULL | (u64{dimension} << 33) | (u64{operation} << 24) |
+             (u64{size} << 20) | (u64{7} << 16) | (u64{4} << 8)));
+    code[0].words[2] = captured.words[2] | (8U << 23);
+    REQUIRE_FALSE(static_cast<bool>(LowerToMaxwell(code)));
 }
 } // namespace
