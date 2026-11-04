@@ -57,6 +57,7 @@ add_executable(tests
     video_core/physical_alias.cpp
     video_core/ampere_returns.cpp
     video_core/ampere_sured.cpp
+    video_core/brx_probe.cpp
     video_core/ampere_fefw.cpp
     video_core/ampere_fe_pipeline.cpp
     video_core/gpu_split_wait.cpp
