@@ -21,5 +21,6 @@ NVIDIA GPU and the Vulkan renderer.
 | Nintendo Switch Sports Resort | `04008E001F098000` | In game | Game modes start; performance and environments improved. Water and some UI missing: the fixes did not reach the game through shader reuse, corrected, needs testing. | [Details](games/switch-sports-resort.md) |
 | Yoshi | `0400245021D2C000` | In game | Broke again with the shader cache flush, now off by default. Gameplay black: its zeroed shader code is in no cache. | [Details](games/yoshi.md) |
 | Cyberpunk 2077 | `0400DDB020648000` | Boots | Launches to a green screen since the hardware audio codec port. | [Details](games/cyberpunk-2077.md) |
+| Kirby Air Riders | `040077201BE50000` | Not recorded | Lichii's white-world, geometry-return and register fixes are ported; needs testing. | — |
 
 To report a result, see [CONTRIBUTING.md](../CONTRIBUTING.md).

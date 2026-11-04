@@ -37,7 +37,7 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
                                       bool enable_matrix = true,
                                       bool dynamic_texture_handles = false) {
     LoweredProgram result;
-    struct Relocation { u32 output_index; s64 target; u32 output_target = ~0U; };
+    struct Relocation { u32 output_index; s64 target; u32 output_target = ~0U; bool call = false; };
     std::vector<Relocation> relocations;
     std::vector<u32> barrier_tokens;
     std::vector<u32> call_targets;
@@ -80,7 +80,7 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
         if (!geometry_stage) return fail(0, "native program counter load outside geometry stage");
         geometry_exit = AnalyzeGeometryExit(code);
         if (!*geometry_exit)
-            return fail(0, geometry_exit->error);
+            return fail(geometry_exit->error_offset / sizeof(Instruction), geometry_exit->error);
     }
     for (u32 index = 0; index < code.size(); ++index) {
         auto insn = code[index];
@@ -92,7 +92,8 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
         if (insn.Bits(12, 4) == 15) continue; // @!PT: never executes (compiler padding)
         std::optional<u32> active_link;
         u32 active_entry = 0;
-        if (main_exited) {
+        // Geometry envelopes: subroutines run before the exit handler, not in it (Kirby).
+        if (main_exited && (!geometry_exit || index * sizeof(Instruction) < geometry_exit->handler)) {
             for (size_t call = 0; call < call_targets.size(); ++call) {
                 if (call_targets[call] <= index && call_targets[call] >= active_entry) {
                     active_entry = call_targets[call];
@@ -3456,7 +3457,7 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
             }
             call_targets.push_back(static_cast<u32>(target / 16));
             call_links.push_back(link);
-            relocations.push_back({static_cast<u32>(result.instructions.size()), target / 16});
+            relocations.push_back({static_cast<u32>(result.instructions.size()), target / 16, ~0U, true});
             emit(0xe26000000007000fULL);
             break;
         }
@@ -3486,7 +3487,7 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
             if (s64{index} * 16 + 16 + relative != 0)
                 return fail(index, "native return relative base");
             emit(0xe32000000007000fULL);
-            bool complete = !computed_branch;
+            bool complete = !computed_branch && !geometry_exit;
             for (u32 target : call_targets) complete &= target <= index;
             if (complete) return finish(index);
             break;
@@ -3521,8 +3522,24 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
         case 0x94d: { // EXIT
             if (geometry_exit && index * sizeof(Instruction) < geometry_exit->handler) {
                 relocations.push_back({static_cast<u32>(result.instructions.size()),
-                                       geometry_exit->handler / sizeof(Instruction)});
+                                       static_cast<s64>(geometry_exit->handler / sizeof(Instruction))});
                 emit(0xe24000000000000fULL | predicate);
+                // A geometry program whose subroutines return (Kirby Air Riders): its main body ends
+                // at the unconditional EXIT with no main-program branch pending past it. From Lichii.
+                const bool pending_main_branch = std::any_of(
+                    relocations.begin(), relocations.end(), [&](const Relocation& relocation) {
+                        return !relocation.call && relocation.target > index &&
+                               relocation.target !=
+                                   static_cast<s64>(geometry_exit->handler / sizeof(Instruction));
+                    });
+                if (geometry_exit->has_returns && native_predicate == 7 && !main_exited &&
+                    !pending_main_branch && !call_targets.empty()) {
+                    for (u32 target : call_targets) {
+                        if (target <= index)
+                            return fail(index, "native call target overlaps main program");
+                    }
+                    main_exited = true;
+                }
                 break;
             }
             if (insn.Bits(84, 2)) {

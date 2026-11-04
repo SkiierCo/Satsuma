@@ -30,13 +30,68 @@ inline RegisterPressure PrepareRegisterPressure(const Instruction& input, u32 re
     const auto operand = [&](u32 bit, u32 count = 1) { operands.push_back({bit, count}); };
     const u32 opcode = input.Bits(0, 12);
     switch (opcode) {
+    case 0xa02:
+    case 0xc3e:
     case 0x802:
     case 0xb08:
     case 0xd08:
+    case 0x908:
+    case 0x919:
         operand(16);
         break;
+    case 0xa0c:
+    case 0x804:
+    case 0x80b:
+        operand(24);
+        break;
+    case 0x20c:
+    case 0x20b:
+        operand(24);
+        operand(32);
+        break;
+    case 0x807:
+    case 0x820:
+    case 0x421:
+        operand(16);
+        operand(24);
+        break;
+    case 0x207:
+    case 0x208:
+    case 0x220:
+    case 0x221:
+        operand(16);
+        operand(24);
+        operand(32);
+        break;
+    case 0x805:
+        operand(16, 2);
+        break;
+    case 0xc17:
+    case 0x817:
+        operand(16);
+        operand(24);
+        break;
+    case 0xa24:
+        operand(16);
+        operand(24);
+        operand(64);
+        break;
+    case 0x224:
+    case 0x223:
+        operand(16);
+        operand(24);
+        operand(32);
+        operand(64);
+        break;
+    case 0x81a:
+        operand(16);
+        operand(24);
+        break;
     case 0x308:
+    case 0x245:
     case 0x305:
+    case 0x306:
+    case 0x307:
         operand(16);
         operand(32);
         break;
@@ -67,6 +122,7 @@ inline RegisterPressure PrepareRegisterPressure(const Instruction& input, u32 re
     case 0xc10:
     case 0x812:
     case 0x824:
+    case 0x823:
     case 0x831:
     case 0x424:
     case 0x624:
@@ -81,6 +137,7 @@ inline RegisterPressure PrepareRegisterPressure(const Instruction& input, u32 re
         operand(32);
         operand(64);
         break;
+    case 0x419:
     case 0x819:
         operand(16);
         operand(24);
@@ -114,7 +171,7 @@ inline RegisterPressure PrepareRegisterPressure(const Instruction& input, u32 re
             operand(64, 2);
         break;
     case 0x83b:
-        operand(16, input.Bits(72, 2) == 1 ? 2 : 4);
+        operand(16, 1U << input.Bits(72, 2));
         operand(24);
         break;
     case 0x23c:
@@ -124,24 +181,28 @@ inline RegisterPressure PrepareRegisterPressure(const Instruction& input, u32 re
         operand(64, 2);
         break;
     case 0x388:
-    case 0x984: {
+    case 0x984:
+    case 0x988: {
         const u32 width = input.Bits(73, 3), count = width == 6 ? 4 : width == 5 ? 2 : 1;
-        operand(opcode == 0x388 ? 32 : 16, count);
+        operand(opcode == 0x984 ? 16 : 32, count);
         operand(24);
         break;
     }
     case 0x387:
-    case 0x983: {
+    case 0x983:
+    case 0x987: {
         const u32 width = input.Bits(73, 3), count = width == 6 ? 4 : width == 5 ? 2 : 1;
-        operand(opcode == 0x387 ? 32 : 16, count);
+        operand(opcode == 0x983 ? 16 : 32, count);
         operand(24);
         break;
     }
+    case 0x381:
+    case 0x386:
     case 0x981:
     case 0x986: {
         const u32 width = input.Bits(73, 3), count = width == 6 ? 4 : width == 5 ? 2 : 1;
-        operand(opcode == 0x981 ? 16 : 32, count);
-        operand(24, input.Bits(72, 1) ? 2 : 1);
+        operand(opcode == 0x386 || opcode == 0x986 ? 32 : 16, count);
+        operand(24, opcode == 0x381 || opcode == 0x386 || input.Bits(90, 1) ? 2 : 1);
         break;
     }
     default:

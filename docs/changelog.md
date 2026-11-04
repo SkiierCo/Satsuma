@@ -17,6 +17,14 @@ in that game yet. The commit history has the full detail.
   It is now opt-in (`EDEN_NX2_SHADER_FLUSH=1`).
 - **Indirect-branch errors** now report the table's location, first entries and the
   program's size.
+- **Kirby Air Riders, from Lichii build 70.** Needs testing in Kirby.
+  - White world: the SMAA resolve adds a dither bias from bank 17 to its output bits; the
+    console leaves it zero, the blit constants fill it, and every pixel saturated to white.
+    The bias is now dropped, also when the colour comes through a phi.
+  - Geometry programs whose subroutines return before the exit handler now lower.
+  - Guest registers written by FMUL (`0x220`) and other opcodes are preserved around the
+    uniform-register mirrors.
+  - `IGraphicsScaleController` command 1050 is handled; command 10's reply is complete.
 
 ## 2026-11-04
 

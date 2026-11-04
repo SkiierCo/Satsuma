@@ -57,6 +57,7 @@ add_executable(tests
     video_core/physical_alias.cpp
     video_core/ampere_returns.cpp
     video_core/ampere_sured.cpp
+    video_core/blit_dither.cpp
     audio_core/batch_decoder.cpp
     audio_core/hardware_audio_codec.cpp
     core/system_test_context.h
