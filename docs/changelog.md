@@ -12,7 +12,7 @@ in that game yet. The commit history has the full detail.
   suspect: the handle tracker reads `value & mask` as `value` shifted left by the mask's
   trailing zeros. The log now shows each tracked handle that was shifted this way and each
   handle the byte-offset rule changed, to confirm the source in Switch Sports.
-- **Splatoon Raiders: fully playable** (owner).
+- **Splatoon Raiders: fully playable** (Fil).
 - **Blit dither bias as on the console.** Native fragment shaders read words 0x10-0x18 of the
   blit constant block as an integer dither bias, which the console leaves zero. Satsuma filled
   them with the texel size and UV scale, and patched only Kirby Air Riders' SMAA resolve by
