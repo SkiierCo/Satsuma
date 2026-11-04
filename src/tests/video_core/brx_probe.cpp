@@ -14,6 +14,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "shader_recompiler/environment.h"
+#include "shader_recompiler/frontend/ampere/program_address_map.h"
+#include "shader_recompiler/frontend/maxwell/control_flow.h"
+#include "shader_recompiler/object_pool.h"
 #include "shader_recompiler/frontend/maxwell/decode.h"
 #include "shader_recompiler/frontend/maxwell/indirect_branch_table_track.h"
 #include "shader_recompiler/frontend/maxwell/opcodes.h"
@@ -60,10 +63,26 @@ TEST_CASE("Lowered BRX neighbourhoods", "[.brxprobe]") {
 namespace {
 class DumpEnvironment final : public Shader::Environment {
 public:
-    explicit DumpEnvironment(std::vector<u64> code_) : code{std::move(code_)} {}
+    // .ash dumps start after the 0x50-byte header: put it back so addresses index the code.
+    explicit DumpEnvironment(std::vector<u64> code_) : code(10, 0) {
+        code.insert(code.end(), code_.begin(), code_.end());
+        // The dump pads after the address map; the map ends the code in the emulator.
+        while (!code.empty() && code.back() == 0) {
+            code.pop_back();
+        }
+    }
     u64 ReadInstruction(u32 address) override {
-        const size_t index = (address - 0x50) / 8;
-        return address >= 0x50 && index < code.size() ? code[index] : 0;
+        const size_t index = address / 8;
+        return index < code.size() ? code[index] : 0;
+    }
+    u32 TranslateProgramAddress(u32 address) const override {
+        if (const auto translated = Shader::Ampere::NativeProgramAddress(code, address)) {
+            return *translated;
+        }
+        return address;
+    }
+    u32 NativeProgramSize() const override {
+        return Shader::Ampere::NativeProgramSize(code);
     }
     u32 ReadCbufValue(u32, u32) override { return 0; }
     Shader::TextureType ReadTextureType(u32) override { return Shader::TextureType::Color2D; }
@@ -114,6 +133,13 @@ TEST_CASE("Lowered BRX tracking", "[.brxprobe]") {
                 std::printf("TRACK FAIL %s @%#x\n", entry.path().filename().string().c_str(),
                             address);
             }
+        }
+        try {
+            Shader::ObjectPool<Shader::Maxwell::Flow::Block> blocks;
+            Shader::Maxwell::Flow::CFG cfg(env, blocks, Shader::Maxwell::Location{0x50}, false);
+            std::printf("CFG OK     %s\n", entry.path().filename().string().c_str());
+        } catch (const std::exception& e) {
+            std::printf("CFG FAIL   %s: %s\n", entry.path().filename().string().c_str(), e.what());
         }
     }
 }

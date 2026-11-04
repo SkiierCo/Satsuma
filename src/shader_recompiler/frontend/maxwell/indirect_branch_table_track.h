@@ -15,7 +15,7 @@ namespace Shader::Maxwell {
 struct IndirectBranchTableInfo {
     u32 cbuf_index{};
     u32 cbuf_offset{};
-    u32 num_entries{};
+    u32 num_entries{}; ///< 0: no IMNMX bound was found (lowered native programs bound it)
     s32 branch_offset{};
     IR::Reg branch_reg{};
 };

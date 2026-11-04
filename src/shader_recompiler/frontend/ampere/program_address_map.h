@@ -17,6 +17,13 @@ inline void AppendNativeAddressMap(std::vector<u64>& code, std::span<const u32> 
     code.push_back(offsets.size());
     code.push_back(NativeAddressMapMagic);
 }
+/// Size in bytes of the native program a lowered program's address map covers (0 without one).
+inline u32 NativeProgramSize(std::span<const u64> code) {
+    if (!HasNativeAddressMap(code)) return 0;
+    const u64 count = code[code.size() - 2];
+    if (!count || count > 65536 || count + 2 > code.size()) return 0;
+    return static_cast<u32>(count * 16);
+}
 inline std::optional<u32> NativeProgramAddress(std::span<const u64> code, u32 address) {
     if (!HasNativeAddressMap(code) || address % 16) return {};
     const u64 count = code[code.size() - 2];

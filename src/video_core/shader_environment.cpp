@@ -188,6 +188,10 @@ bool FileEnvironment::HasNativeInstructions() const {
     return Shader::Ampere::HasNativeAddressMap(code);
 }
 
+u32 GenericEnvironment::NativeProgramSize() const {
+    return Shader::Ampere::NativeProgramSize(code);
+}
+
 u32 GenericEnvironment::TranslateProgramAddress(u32 address) const {
     if (const auto translated = Shader::Ampere::NativeProgramAddress(code, address)) return *translated;
     if (native_source_size || Shader::Ampere::HasNativeAddressMap(code))
@@ -1182,6 +1186,10 @@ void FileEnvironment::Deserialize(std::ifstream& file) {
 
 void FileEnvironment::Dump(u64 pipeline_hash, u64 shader_hash) {
     DumpImpl(pipeline_hash, shader_hash, code, read_highest, read_lowest, initial_offset, stage);
+}
+
+u32 FileEnvironment::NativeProgramSize() const {
+    return Shader::Ampere::NativeProgramSize(code);
 }
 
 u32 FileEnvironment::TranslateProgramAddress(u32 address) const {

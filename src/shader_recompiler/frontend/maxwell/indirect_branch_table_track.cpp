@@ -88,7 +88,18 @@ std::optional<IndirectBranchTableInfo> TrackIndirectBranchTable(Environment& env
 
     const std::optional<u64> imnmx_insn{TrackIMNMX(env, block_begin, pos, shl_reg)};
     if (!imnmx_insn) {
-        return std::nullopt;
+        // Lowered native programs may bound the index another way (Switch Sports clamps it
+        // with a SEL); their tables hold native addresses, which the caller can check.
+        if (env.NativeProgramSize() == 0) {
+            return std::nullopt;
+        }
+        return IndirectBranchTableInfo{
+            .cbuf_index = cbuf_index,
+            .cbuf_offset = cbuf_offset,
+            .num_entries = 0,
+            .branch_offset = brx_offset,
+            .branch_reg = brx_reg,
+        };
     }
     const Encoding imnmx{*imnmx_insn};
     if (imnmx.is_negative != 0) {

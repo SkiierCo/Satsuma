@@ -76,6 +76,7 @@ public:
     [[nodiscard]] u64 ReadInstruction(u32 address) final;
 
     [[nodiscard]] u32 TranslateProgramAddress(u32 address) const override;
+    [[nodiscard]] u32 NativeProgramSize() const override;
 
     [[nodiscard]] bool IsNativeProgram() const override;
 
@@ -266,6 +267,7 @@ public:
     [[nodiscard]] u64 ReadInstruction(u32 address) override;
 
     [[nodiscard]] u32 TranslateProgramAddress(u32 address) const override;
+    [[nodiscard]] u32 NativeProgramSize() const override;
 
     [[nodiscard]] bool IsNativeProgram() const override;
 

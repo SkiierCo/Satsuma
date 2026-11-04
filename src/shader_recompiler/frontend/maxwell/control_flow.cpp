@@ -448,15 +448,25 @@ CFG::AnalysisState CFG::AnalyzeBRX(Block* block, Location pc, Instruction inst, 
         throw NotImplementedException("Conditional indirect branch");
     }
     std::vector<u32> targets;
+    // Without a bound (num_entries 0), read the table while its entries are native instruction
+    // addresses inside the program. An extra entry only adds a label at a real instruction.
+    const u32 native_size{brx_table->num_entries == 0 ? env.NativeProgramSize() : 0};
+    const u32 num_entries{brx_table->num_entries != 0 ? brx_table->num_entries : 256U};
     targets.reserve(brx_table->num_entries);
-    for (u32 i = 0; i < brx_table->num_entries; ++i) {
+    for (u32 i = 0; i < num_entries; ++i) {
         u32 target{env.ReadCbufValue(brx_table->cbuf_index, brx_table->cbuf_offset + i * 4)};
         if (!is_absolute) {
             target += pc.Offset();
         }
         target += static_cast<u32>(brx_table->branch_offset);
         target += 8;
+        if (native_size != 0 && (target % 16 != 0 || target >= native_size)) {
+            break;
+        }
         targets.push_back(target);
+    }
+    if (targets.empty()) {
+        throw NotImplementedException("Failed to track indirect branch");
     }
     std::ranges::sort(targets);
     targets.erase(std::unique(targets.begin(), targets.end()), targets.end());

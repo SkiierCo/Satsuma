@@ -77,6 +77,10 @@ public:
 
     [[nodiscard]] virtual u32 TranslateProgramAddress(u32 address) const { return address; }
 
+    /// Lowered native programs: the native program's size in bytes, which bounds the addresses
+    /// its indirect branch tables can hold (0 for other programs).
+    [[nodiscard]] virtual u32 NativeProgramSize() const { return 0; }
+
     /// A Switch 2 native program lowered to Maxwell instructions. Its storage buffer pointers are
     /// raw 8-byte arguments in constant buffers, without the NVN descriptor layout.
     [[nodiscard]] virtual bool IsNativeProgram() const { return false; }
