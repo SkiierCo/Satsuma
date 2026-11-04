@@ -25,6 +25,8 @@ in that game yet. The commit history has the full detail.
   - Guest registers written by FMUL (`0x220`) and other opcodes are preserved around the
     uniform-register mirrors.
   - `IGraphicsScaleController` command 1050 is handled; command 10's reply is complete.
+- **Register-handle surface loads and stores** (`0x998`, `0x99c`; The Duskbloods), from
+  Lichii build 70, with its tests.
 
 ## 2026-11-04
 
