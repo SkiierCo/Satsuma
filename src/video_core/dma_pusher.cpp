@@ -645,6 +645,12 @@ size_t DmaPusher::ProcessCommandsImpl(std::span<const CommandHeader> commands, s
             default:
                 break;
             }
+            // A data word read as a header (Mario Kart World's desync) usually claims far more
+            // words than the entry has left: report it while the parser state is still current.
+            if (command_header.mode != SubmissionMode::Inline &&
+                dma_state.method_count > commands.size() - index + 1024) {
+                ReportDesync("implausible header");
+            }
             index++;
         }
         if (puller.HasPendingAcquire()) {
