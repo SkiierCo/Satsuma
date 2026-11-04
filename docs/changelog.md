@@ -6,6 +6,12 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-04 (third round)
 
+- **GPU-only regions backed as they're used.** With 12 GiB of console memory, four of Switch
+  Sports' six 490 MiB GPU-only regions (`nx2:gpu` 214, where it keeps render targets) got no
+  memory, and the water and other rendering broke again. Switch Sports' 9.58 GiB plus those
+  2.94 GiB is more than the console's 12 GB, so the console can't be backing them whole.
+  They now get memory per block as the GPU writes them, as sparse regions already did.
+  `EDEN_NX2_GPU_ONLY_LAZY=0` backs them whole. Needs testing in Switch Sports.
 - **Where byte-offset texture handles come from.** Switch Sports' own NVN driver code builds
   handles as `texture | sampler << 20` from pool indices, never byte offsets, so the
   `index x 32` handles the byte-offset rule catches are likely made by the emulator. One

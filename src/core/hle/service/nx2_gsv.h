@@ -589,17 +589,21 @@ private:
             const u64 size = last + 1 - start;
             std::scoped_lock lk{m_region_mutex};
             FreeReleasedRegions();
-            if ((w[7] & SparseRegionFlag) != 0 && LazySparseRegions()) {
+            const bool sparse_flag = (w[7] & SparseRegionFlag) != 0;
+            if (sparse_flag ? LazySparseRegions() : LazyGpuOnlyRegions()) {
                 // Title 1's terrain texture arrays and layer pools (170 MB-5.8 GB, mostly empty):
                 // backed whole, they ran the pool dry and the later ones got no memory at all.
                 // The region gets a device range of its own, unbacked pages read zero, and
                 // BackSparseWrite gives a block memory before the GPU writes into it.
+                // GPU-only regions without the flag too: Switch Sports asks for six of 490 MiB
+                // next to its 9.58 GiB, more than the console's 12 GB, so the console can't be
+                // backing them whole either; backed whole, four of them got no memory.
                 if (Nvidia::Devices::Nx2GpuMemoryRegistry::Get().CreateSparse(start, size)) {
                     m_sparse_regions.emplace(start, SparseRegion{size, ++m_sparse_generation});
                     Tegra::Nx2SparseRegionCreated(start, size, SparseBlockSize);
                     Tegra::Nx2AddSparseSpan(start, size);
-                    LOG_INFO(Service, "nx2:gpu 214 sparse region [{:#x}, {:#x}] backed as the GPU writes it",
-                             start, last);
+                    LOG_INFO(Service, "nx2:gpu 214 {} region [{:#x}, {:#x}] backed as the GPU writes it",
+                             sparse_flag ? "sparse" : "GPU-only", start, last);
                 }
             } else if (const auto address = BackGpuOnlyRegion(start, size)) {
                 Nvidia::Devices::Nx2GpuMemoryRegistry::Get().MapAt(start, *address, size);
@@ -872,6 +876,15 @@ private:
     static bool LazySparseRegions() {
         static const bool lazy = [] {
             const char* value = std::getenv("EDEN_NX2_SPARSE_LAZY");
+            return value == nullptr || value[0] != '0';
+        }();
+        return lazy;
+    }
+
+    // EDEN_NX2_GPU_ONLY_LAZY=0 backs GPU-only regions (214 without the sparse flag) whole.
+    static bool LazyGpuOnlyRegions() {
+        static const bool lazy = [] {
+            const char* value = std::getenv("EDEN_NX2_GPU_ONLY_LAZY");
             return value == nullptr || value[0] != '0';
         }();
         return lazy;

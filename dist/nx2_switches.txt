@@ -33,3 +33,6 @@ EDEN_NX2_KEEP_ASTC=1
 EDEN_NX2_BANK_REFRESH=0
 EDEN_NX2_SPARSE_REMAP=1
 EDEN_NX2_DMA_SCATTER=0
+
+# GPU-only regions (nx2:gpu 214) get memory as the GPU writes them; =0 backs them whole.
+#EDEN_NX2_GPU_ONLY_LAZY=0
