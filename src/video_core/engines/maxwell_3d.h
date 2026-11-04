@@ -2550,8 +2550,11 @@ public:
         static constexpr std::size_t MeshShaderB = 0x1154 / 4;
         static constexpr std::size_t MeshInitShader = 0x1158 / 4;
 
+        // A mesh pipeline names its output topology and limits in SET_MESH_SHADER_A. Switch
+        // Sports' UI layers draw with mesh control set and SET_MESH_SHADER_A zero (no topology,
+        // no vertices): those are plain vertex pipelines.
         bool IsMeshEnabled() const {
-            return (reg_array[MeshControl] & 1) != 0;
+            return (reg_array[MeshControl] & 1) != 0 && reg_array[MeshShaderA] != 0;
         }
 
         struct ConstantBuffer {
