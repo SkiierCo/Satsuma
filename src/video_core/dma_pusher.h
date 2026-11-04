@@ -231,7 +231,17 @@ public:
         u32 count_after;
         u32 subindex;
     };
-    std::array<ProcessRecord, 8> process_records{};
+    std::array<ProcessRecord, 32> process_records{};
+    /// The last header that claimed far more words than its entry had left.
+    struct SuspiciousHeader {
+        GPUVAddr entry;
+        u32 subindex;
+        u32 index;
+        u32 entry_words;
+        u32 header;
+        const char* source;
+    };
+    std::optional<SuspiciousHeader> suspicious_header;
     u32 process_record_count{};
 
     std::queue<CommandList> dma_pushbuffer; ///< Queue of command lists to be processed

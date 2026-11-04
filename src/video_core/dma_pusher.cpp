@@ -649,6 +649,14 @@ size_t DmaPusher::ProcessCommandsImpl(std::span<const CommandHeader> commands, s
             // words than the entry has left: report it while the parser state is still current.
             if (command_header.mode != SubmissionMode::Inline &&
                 dma_state.method_count > commands.size() - index + 1024) {
+                suspicious_header = SuspiciousHeader{
+                    .entry = dma_state.dma_get,
+                    .subindex = static_cast<u32>(dma_pushbuffer_subindex),
+                    .index = static_cast<u32>(word_offset + index),
+                    .entry_words = static_cast<u32>(word_offset + commands.size()),
+                    .header = command_header.argument,
+                    .source = report_entry_source,
+                };
                 ReportDesync("implausible header");
             }
             index++;
@@ -1012,6 +1020,18 @@ void DmaPusher::ReportDesync(const char* reason) {
               begin, end, fmt::join(processed, " "),
               fmt::join(std::span{now}.subspan(begin, end - begin), " "),
               memory_manager.DescribeCachedRegion(report_entry_address, size_t{report_entry_words} * 4));
+    if (suspicious_header) {
+        const auto& h = *suspicious_header;
+        std::vector<u32> header_words(h.entry_words);
+        memory_manager.ReadBlockUnsafe(h.entry, header_words.data(), header_words.size() * sizeof(u32));
+        const u32 first = h.index > 6 ? h.index - 6 : 0;
+        const u32 last = (std::min)(h.entry_words, h.index + 4);
+        LOG_ERROR(HW_GPU,
+                  "  last implausible header: {:08x} at word {} of entry {} at {:#x} ({} words, {}); "
+                  "words {}-{} in memory now: {:08x}",
+                  h.header, h.index, h.subindex, h.entry, h.entry_words, h.source, first, last,
+                  fmt::join(std::span{header_words}.subspan(first, last - first), " "));
+    }
     for (u32 i = 0; i < process_records.size() && i < process_record_count; ++i) {
         const auto& r = process_records[(process_record_count - 1 - i) % process_records.size()];
         LOG_ERROR(HW_GPU,
