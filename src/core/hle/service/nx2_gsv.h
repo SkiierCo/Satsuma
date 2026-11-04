@@ -1182,7 +1182,7 @@ private:
 
     // Keep presentation and vsync events on the same display cadence. Changing the display
     // refresh target must not change the emulated clock or the speed-limit percentage.
-    std::chrono::steady_clock::time_point m_next_vblank{};
+    std::optional<std::chrono::steady_clock::time_point> m_last_present_deadline{};
 
     static s64 DisplayRefreshRate() {
         return VI::DisplayRefreshRate();
@@ -1216,20 +1216,25 @@ private:
         }
         const auto interval{VI::PresentPeriod(present_timing,
                                               static_cast<u32>(Settings::SpeedLimit()))};
+        // The deadline is the last present's plus the current interval, so a changed swap interval
+        // applies to this present already (keeping the next deadline instead applied it one present
+        // late: Bananza slept 47 ms where it asked for 33). From Lichii build 70.
         const auto now = std::chrono::steady_clock::now();
-        if (now > m_next_vblank + interval) {
+        const auto deadline = m_last_present_deadline ? *m_last_present_deadline + interval : now;
+        if (!m_last_present_deadline || now > deadline + interval) {
             // Running slower than the requested rate: show at once and don't bank the lost time.
-            m_next_vblank = now;
-        } else if (now < m_next_vblank) {
+            m_last_present_deadline = now;
+            return;
+        }
+        if (now < deadline) {
             // Sleep this service thread in the guest kernel; a host sleep held its guest core for
             // the whole wait, so game threads scheduled there ran only between presents
             // (Fortune's Weave's loader read one RomFS block per frame).
-            const auto wait =
-                std::chrono::duration_cast<std::chrono::nanoseconds>(m_next_vblank - now);
+            const auto wait = std::chrono::duration_cast<std::chrono::nanoseconds>(deadline - now);
             static_cast<void>(Kernel::GetCurrentThread(kernel).Sleep(
                 kernel, kernel.HardwareTimer().GetTick() + wait.count() + 2));
         }
-        m_next_vblank += interval;
+        m_last_present_deadline = deadline;
     }
 
     u32 m_swap_word{};
