@@ -7,7 +7,7 @@ in that game yet. The commit history has the full detail.
 ## 2026-11-04 (third round)
 
 - **Per-game display rate.** `EDEN_NX2_VSYNC_HZ_<program ID>` overrides `EDEN_NX2_VSYNC_HZ`
-  for one game. The shipped switches set Super Mario Bros. Wonder to 60 under the 120 Hz
+  for one game. The shipped switches cap Super Mario Bros. Wonder at 67 under the 120 Hz
   default (Fil's request).
 - **Super Mario Bros. Wonder: fully playable** (Fil).
 - **Add-on content answers logged.** Wonder's Switch 2 Edition DLC is installed in NAND but not

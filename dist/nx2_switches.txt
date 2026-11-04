@@ -38,5 +38,5 @@ EDEN_NX2_DMA_SCATTER=0
 #EDEN_NX2_GPU_ONLY_LAZY=0
 
 # Per game: EDEN_NX2_VSYNC_HZ_<program ID> overrides EDEN_NX2_VSYNC_HZ for that game.
-# Super Mario Bros. Wonder at 60.
-EDEN_NX2_VSYNC_HZ_010015100B514000=60
+# Super Mario Bros. Wonder capped at 67.
+EDEN_NX2_VSYNC_HZ_010015100B514000=67
