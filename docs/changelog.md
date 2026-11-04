@@ -25,6 +25,13 @@ in that game yet. The commit history has the full detail.
   - Guest registers written by FMUL (`0x220`) and other opcodes are preserved around the
     uniform-register mirrors.
   - `IGraphicsScaleController` command 1050 is handled; command 10's reply is complete.
+- **Global atomics and storage-buffer tracking**, from Lichii build 70. Global atomic adds
+  that stay global (Donkey Kong Bananza's append counters, Kirby's compute) are resolved
+  among the bound storage buffers instead of failing, and pointers carried through a 64-bit
+  add with carry are recognised. Lichii's rewritten storage-buffer tracker is merged with
+  Satsuma's pruned search (fast translation of very large shaders kept); NVN descriptor slots
+  are matched by offset; storage buffers are marked coherent when the program needs it.
+  With Lichii's 23 storage-buffer tests. Affects every game's storage buffers.
 - **Texture handles holding a byte offset.** Some Switch 2 bindless handles (Switch Sports'
   scenery) hold the texture header's byte offset (index × 32) instead of its index, and
   pointed past the texture table. On Switch 2 they are read as an offset when the index is

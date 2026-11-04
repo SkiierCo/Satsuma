@@ -16,6 +16,7 @@
 #include "common/common_types.h"
 #include "common/div_ceil.h"
 #include "shader_recompiler/backend/spirv/emit_spirv.h"
+#include "shader_recompiler/backend/nvn_storage_descriptor.h"
 #include "shader_recompiler/backend/spirv/spirv_emit_context.h"
 
 namespace Shader::Backend::SPIRV {
@@ -311,6 +312,9 @@ void DefineSsbos(EmitContext& ctx, StorageTypeDefinition& type_def,
     const Id struct_type{ctx.TypeStruct(array_type)};
     ctx.Decorate(struct_type, spv::Decoration::Block);
     ctx.MemberDecorate(struct_type, 0, spv::Decoration::Offset, 0U);
+    if (info.requires_coherent_global_memory) {
+        ctx.MemberDecorate(struct_type, 0, spv::Decoration::Coherent);
+    }
 
     const Id struct_pointer{ctx.TypePointer(spv::StorageClass::StorageBuffer, struct_type)};
     type_def.array = struct_pointer;
@@ -492,7 +496,7 @@ EmitContext::EmitContext(const Profile& profile_, const RuntimeInfo& runtime_inf
     DefineImages(program.info, image_binding, bindings.image_scaling_index);
     DefineAttributeMemAccess(program.info);
     DefineWriteStorageCasLoopFunction(program.info);
-    DefineGlobalMemoryFunctions(program.info);
+    DefineGlobalMemoryFunctions(program);
     DefineRescalingInput(program.info);
     DefineRenderArea(program.info);
 }
@@ -944,7 +948,8 @@ void EmitContext::DefineWriteStorageCasLoopFunction(const Info& info) {
     write_storage_cas_loop_func = func;
 }
 
-void EmitContext::DefineGlobalMemoryFunctions(const Info& info) {
+void EmitContext::DefineGlobalMemoryFunctions(const IR::Program& program) {
+    const Info& info{program.info};
     if (!info.uses_global_memory || !profile.support_int64) {
         return;
     }
@@ -997,7 +1002,7 @@ void EmitContext::DefineGlobalMemoryFunctions(const Info& info) {
             return;
         }
         for (size_t index = 0; index < num_buffers; ++index) {
-            if (!info.nvn_buffer_used[index]) {
+            if (!Backend::UsesNvnStorageDescriptor(info, info.storage_buffers_descriptors[index])) {
                 continue;
             }
             const auto& ssbo{info.storage_buffers_descriptors[index]};
@@ -1049,6 +1054,34 @@ void EmitContext::DefineGlobalMemoryFunctions(const Info& info) {
         define(&StorageDefinitions::U32x2, storage_types.U32x2, U32[2], sizeof(u32[2]));
     std::tie(load_global_func_u32x4, write_global_func_u32x4) =
         define(&StorageDefinitions::U32x4, storage_types.U32x4, U32[4], sizeof(u32[4]));
+
+    // Global atomic adds left global (several candidate buffers, or none mapped when the pipeline
+    // was built): resolved among the bound buffers like loads and stores. Bananza's append
+    // counters, Kirby's compute. From Lichii build 70.
+    if (!std::ranges::any_of(program.blocks, [](const IR::Block* block) {
+            return std::ranges::any_of(block->Instructions(), [](const IR::Inst& inst) {
+                return inst.GetOpcode() == IR::Opcode::GlobalAtomicIAdd32;
+            });
+        })) {
+        return;
+    }
+    if (!std::ranges::any_of(info.storage_buffers_descriptors, [&](const auto& descriptor) {
+            return info.native_global_bounds || Backend::UsesNvnStorageDescriptor(info, descriptor);
+        })) {
+        return;
+    }
+    const Id function_type{TypeFunction(U32[1], U64, U32[1])};
+    atomic_add_global_func_u32 =
+        OpFunction(U32[1], spv::FunctionControlMask::MaskNone, function_type);
+    const Id address{OpFunctionParameter(U64)};
+    const Id value{OpFunctionParameter(U32[1])};
+    const Id scope{Const(static_cast<u32>(spv::Scope::Device))};
+    define_body(&StorageDefinitions::U32, address, storage_types.U32.element, 2,
+                [&](Id pointer) {
+                    OpReturnValue(OpAtomicIAdd(U32[1], pointer, scope, u32_zero_value, value));
+                });
+    OpReturnValue(u32_zero_value);
+    OpFunctionEnd();
 }
 
 void EmitContext::DefineRescalingInput(const Info& info) {
