@@ -57,6 +57,9 @@ add_executable(tests
     video_core/physical_alias.cpp
     video_core/ampere_returns.cpp
     video_core/ampere_sured.cpp
+    audio_core/batch_decoder.cpp
+    audio_core/hardware_audio_codec.cpp
+    core/system_test_context.h
     video_core/brx_probe.cpp
     video_core/ampere_fefw.cpp
     video_core/ampere_fe_pipeline.cpp

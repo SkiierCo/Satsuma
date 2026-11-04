@@ -201,6 +201,10 @@ public:
      */
     u32 Read32(Common::ProcessAddress addr);
 
+    /// Reads a naturally aligned word with acquire ordering (shared queues written by the guest).
+    /// Returns false for an unaligned or unmapped address.
+    bool Read32Acquire(Common::ProcessAddress addr, u32& value);
+
     /**
      * Reads a 64-bit unsigned value from the current process' address space
      * at the given virtual address.

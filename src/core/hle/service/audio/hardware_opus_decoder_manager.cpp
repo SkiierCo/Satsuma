@@ -6,111 +6,17 @@
 
 #include "core/hle/service/audio/hardware_opus_decoder.h"
 #include "core/hle/service/audio/hardware_opus_decoder_manager.h"
+#include "core/hle/service/audio/hardware_audio_codec.h"
+#include "core/hle/service/audio/errors.h"
 #include "core/hle/service/cmif_serialization.h"
-#include "core/hle/service/ipc_helpers.h"
-#include "core/hle/service/nx2_stub_interface.h"
-
-#include <algorithm>
-#include <span>
-#include <string>
-#include <string_view>
-#include <fmt/format.h>
 
 namespace Service::Audio {
 
 using namespace AudioCore::OpusDecoder;
 
-namespace {
-// Logs a Switch 2 hwacod request in full: its raw words, every X and A buffer and its handles.
-// The protocol is undocumented; these logs are what it is rebuilt from.
-void LogHwacodRequest(HLERequestContext& ctx, std::string_view session) {
-    const u32* words = ctx.CommandBuffer();
-    std::string raw;
-    for (u32 i = 0; i < 24; ++i) {
-        raw += fmt::format("{:08x} ", words[i]);
-    }
-    LOG_INFO(Service_Audio, "hwacod {} cmd {}: words {}", session, ctx.GetCommand(), raw);
-    const auto dump = [&](std::string_view kind, size_t index, std::span<const u8> data) {
-        std::string hex;
-        for (size_t i = 0; i < (std::min<size_t>)(data.size(), 512); ++i) {
-            hex += fmt::format("{:02x}", data[i]);
-            if (i % 4 == 3) {
-                hex += ' ';
-            }
-        }
-        LOG_INFO(Service_Audio, "hwacod {} cmd {}: {} buffer {} ({} bytes): {}", session,
-                 ctx.GetCommand(), kind, index, data.size(), hex);
-    };
-    for (size_t i = 0; i < ctx.BufferDescriptorX().size(); ++i) {
-        dump("X", i, ctx.ReadBufferX(i));
-    }
-    for (size_t i = 0; i < ctx.BufferDescriptorA().size(); ++i) {
-        dump("A", i, ctx.ReadBufferA(i));
-    }
-    if (ctx.CanWriteBuffer(0)) {
-        LOG_INFO(Service_Audio, "hwacod {} cmd {}: output buffer of {} bytes", session,
-                 ctx.GetCommand(), ctx.GetWriteBufferSize(0));
-    }
-}
-
-// [S2] nn::codec::hwacod::IHardwareAudioCodecManagerSession (IClientSession 10). Commands 0, 1
-// and 10 are logged and answered with an empty success.
-class IHardwareAudioCodecManagerSession final
-    : public ServiceFramework<IHardwareAudioCodecManagerSession> {
-public:
-    explicit IHardwareAudioCodecManagerSession(Core::System& system_)
-        : ServiceFramework{system_, "nx2:hwacod:IHardwareAudioCodecManagerSession"} {
-        static const FunctionInfo functions[] = {
-            {0, &IHardwareAudioCodecManagerSession::Log, "Cmd0"},
-            {1, &IHardwareAudioCodecManagerSession::Log, "Cmd1"},
-            {10, &IHardwareAudioCodecManagerSession::Log, "Cmd10"},
-        };
-        RegisterHandlers(functions);
-    }
-
-private:
-    void Log(HLERequestContext& ctx) {
-        LogHwacodRequest(ctx, "IHardwareAudioCodecManagerSession");
-        IPC::ResponseBuilder rb{ctx, 2};
-        rb.Push(ResultSuccess);
-    }
-};
-
-// [S2] nn::codec::hwacod::IClientSession, opened with hwopus 100 (Cyberpunk 2077 opens it while
-// starting its audio; answered without a session, it called a session that did not exist and
-// aborted with 2010-0212). Commands 0 and 1 are logged and answered with an empty success; 10
-// returns an IHardwareAudioCodecManagerSession.
-class IHardwareAudioCodecClientSession final
-    : public ServiceFramework<IHardwareAudioCodecClientSession> {
-public:
-    explicit IHardwareAudioCodecClientSession(Core::System& system_)
-        : ServiceFramework{system_, "nx2:hwacod:IClientSession"} {
-        static const FunctionInfo functions[] = {
-            {0, &IHardwareAudioCodecClientSession::Log, "Cmd0"},
-            {1, &IHardwareAudioCodecClientSession::Log, "Cmd1"},
-            {10, &IHardwareAudioCodecClientSession::OpenManagerSession, "Cmd10"},
-        };
-        RegisterHandlers(functions);
-    }
-
-private:
-    void Log(HLERequestContext& ctx) {
-        LogHwacodRequest(ctx, "IClientSession");
-        IPC::ResponseBuilder rb{ctx, 2};
-        rb.Push(ResultSuccess);
-    }
-
-    void OpenManagerSession(HLERequestContext& ctx) {
-        LogHwacodRequest(ctx, "IClientSession");
-        IPC::ResponseBuilder rb{ctx, 2, 0, 1};
-        rb.Push(ResultSuccess);
-        rb.PushIpcInterface<IHardwareAudioCodecManagerSession>(ctx, system);
-    }
-};
-} // Anonymous namespace
-
 IHardwareOpusDecoderManager::IHardwareOpusDecoderManager(Core::System& system_)
-    : ServiceFramework{system_, "hwopus"}, system{system_}, impl{system} {
+    : ServiceFramework{system_, "hwopus"}, system{system_}, impl{system},
+      codec_tags{std::make_shared<HardwareAudioCodecTags>()} {
     // clang-format off
     static const FunctionInfo functions[] = {
         {0, D<&IHardwareOpusDecoderManager::OpenHardwareOpusDecoder>, "OpenHardwareOpusDecoder"},
@@ -123,7 +29,7 @@ IHardwareOpusDecoderManager::IHardwareOpusDecoderManager(Core::System& system_)
         {7, D<&IHardwareOpusDecoderManager::GetWorkBufferSizeForMultiStreamEx>, "GetWorkBufferSizeForMultiStreamEx"},
         {8, D<&IHardwareOpusDecoderManager::GetWorkBufferSizeExEx>, "GetWorkBufferSizeExEx"},
         {9, D<&IHardwareOpusDecoderManager::GetWorkBufferSizeForMultiStreamExEx>, "GetWorkBufferSizeForMultiStreamExEx"},
-        {100, &IHardwareOpusDecoderManager::OpenHardwareAudioCodecSession, "Cmd100"},
+        {100, &IHardwareOpusDecoderManager::GetClientSessionRequest, "GetClientSession"},
     };
     // clang-format on
     RegisterHandlers(functions);
@@ -131,20 +37,28 @@ IHardwareOpusDecoderManager::IHardwareOpusDecoderManager(Core::System& system_)
 
 IHardwareOpusDecoderManager::~IHardwareOpusDecoderManager() = default;
 
-void IHardwareOpusDecoderManager::OpenHardwareAudioCodecSession(HLERequestContext& ctx) {
-    LOG_WARNING(Service_Audio, "(STUBBED) Switch 2 hwopus 100 -> hwacod IClientSession");
-    IPC::ResponseBuilder rb{ctx, 2, 0, 1};
-    rb.Push(ResultSuccess);
-    rb.PushIpcInterface<IHardwareAudioCodecClientSession>(ctx, system);
+void IHardwareOpusDecoderManager::GetClientSessionRequest(HLERequestContext& ctx) {
+    if (!GuardHardwareAudioCodecRequest(ctx, {0, 0, Hwacod::InputBuffer::None})) {
+        return;
+    }
+    try {
+        CmifReplyWrap<true, &IHardwareOpusDecoderManager::GetClientSession>(ctx);
+    } catch (const std::bad_alloc&) {
+        IPC::ResponseBuilder reply{ctx, 2};
+        reply.Push(ResultLibOpusAllocFail);
+    }
+}
+
+Result IHardwareOpusDecoderManager::GetClientSession(Out<SharedPointer<IClientSession>> out_client) {
+    *out_client = std::make_shared<IClientSession>(system, codec_tags);
+    R_SUCCEED();
 }
 
 Result IHardwareOpusDecoderManager::OpenHardwareOpusDecoder(
     Out<SharedPointer<IHardwareOpusDecoder>> out_decoder, OpusParameters params, u32 tmem_size,
     InCopyHandle<Kernel::KTransferMemory> tmem_handle) {
-    // Info, not debug: Cyberpunk 2077 opens its decoders with parameters that fail (see
-    // OpusParameters' WithDefaultSampleRate); these show what it sends.
-    LOG_INFO(Service_Audio, "sample_rate {:#x} channel_count {:#x} transfer_memory_size {:#x}",
-             params.sample_rate, params.channel_count, tmem_size);
+    LOG_DEBUG(Service_Audio, "sample_rate {} channel_count {} transfer_memory_size {:#x}",
+              params.sample_rate, params.channel_count, tmem_size);
 
     auto decoder{std::make_shared<IHardwareOpusDecoder>(system, impl.GetHardwareOpus())};
     OpusParametersEx ex{
