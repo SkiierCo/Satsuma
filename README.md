@@ -24,9 +24,9 @@
 
 ## Status
 
-Satsuma is in active development. Switch 2 titles boot and several are playable;
-others still render incorrectly or have missing audio. Known issues are tracked
-per game as they are found.
+Satsuma is in active development. Switch 2 titles boot and multiple games are
+playable from start to finish; others still have rendering issues or straight up
+unplayable but I'm working through multiple games at a time.
 
 Satsuma does not include keys, firmware or games. You need to dump them from your
 own console.
