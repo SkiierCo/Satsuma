@@ -10,7 +10,7 @@ TEST_CASE("Switch 1 controllers stand in for Joy-Con 2 only when a game asks for
     // Switch Sports at its Joy-Con 2 prompt: handheld and Joy-Con 2.
     const NpadStyleTag sports{static_cast<NpadStyleSet>(0x1002)};
     CHECK(sports.joycon2);
-    for (const auto type : {NpadStyleIndex::Fullkey, NpadStyleIndex::JoyconDual,
+    for (const auto type : {NpadStyleIndex::Handheld, NpadStyleIndex::Fullkey, NpadStyleIndex::JoyconDual,
                             NpadStyleIndex::JoyconLeft, NpadStyleIndex::JoyconRight}) {
         CHECK(StandsInForJoyCon2(sports, type, nullptr));
         CHECK_FALSE(StandsInForJoyCon2(sports, type, "0"));

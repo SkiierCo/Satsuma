@@ -251,8 +251,14 @@ bool BufferCache<P>::DMACopy(GPUVAddr src_address, GPUVAddr dest_address, u64 am
     // The copy below takes each range as one run of device memory from its first page. A range
     // over scattered device pages (Yoshi's shader heap) would read and write the wrong pages; the
     // DMA engine copies those page by page instead.
-    if (!gpu_memory->IsContinuousRange(src_address, amount) ||
-        !gpu_memory->IsContinuousRange(dest_address, amount)) {
+    // EDEN_NX2_DMA_SCATTER=0 restores the old single-run copy (to compare: Mario Kart World's
+    // command stream desync predates this, but may have become more frequent).
+    static const bool scatter_check = [] {
+        const char* value = std::getenv("EDEN_NX2_DMA_SCATTER");
+        return value == nullptr || value[0] != '0';
+    }();
+    if (scatter_check && (!gpu_memory->IsContinuousRange(src_address, amount) ||
+                          !gpu_memory->IsContinuousRange(dest_address, amount))) {
         return false;
     }
     const bool source_dirty = IsRegionRegistered(*cpu_src_address, amount);

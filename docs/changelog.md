@@ -25,6 +25,11 @@ in that game yet. The commit history has the full detail.
   - Guest registers written by FMUL (`0x220`) and other opcodes are preserved around the
     uniform-register mirrors.
   - `IGraphicsScaleController` command 1050 is handled; command 10's reply is complete.
+- **Joy-Con 2 stand-in in handheld.** Switch Sports asks for handheld + Joy-Con 2; with a
+  handheld controller it saw a Switch 1 Joy-Con and recommended switching. Handheld now
+  stands in too. Needs testing.
+- **DMA scatter switch.** `EDEN_NX2_DMA_SCATTER=0` restores the old single-run DMA copy, to
+  check whether Mario Kart World's command-stream desync became more frequent with it.
 - **Global atomics and storage-buffer tracking**, from Lichii build 70. Global atomic adds
   that stay global (Donkey Kong Bananza's append counters, Kirby's compute) are resolved
   among the bound storage buffers instead of failing, and pointers carried through a 64-bit

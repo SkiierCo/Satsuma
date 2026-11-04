@@ -357,6 +357,9 @@ inline bool StandsInForJoyCon2(NpadStyleTag supported, NpadStyleIndex style_inde
         return false;
     }
     switch (style_index) {
+    // Handheld too: Joy-Con 2 attached to the console. Switch Sports asks for handheld + Joy-Con 2
+    // and, with a handheld controller, saw a Switch 1 Joy-Con and recommended switching.
+    case NpadStyleIndex::Handheld:
     case NpadStyleIndex::Fullkey:
     case NpadStyleIndex::JoyconDual:
     case NpadStyleIndex::JoyconLeft:
