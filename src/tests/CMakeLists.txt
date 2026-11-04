@@ -10,6 +10,7 @@ add_executable(tests
     common/container_hash.cpp
     common/fibers.cpp
     common/host_memory.cpp
+    common/nso_extract.cpp
     common/host_memory_fallback.cpp
     common/param_package.cpp
     common/range_map.cpp
