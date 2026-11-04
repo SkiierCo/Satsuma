@@ -2026,6 +2026,55 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
             // Rb (.B, bit 59, packed operands, bit 60).
             const bool register_handle = opcode == 0x364;
             const bool bindless = opcode == 0xf63 || register_handle;
+            if (opcode == 0xf63) {
+                // Any gatherable dimension (Yoshi gathers from 2D arrays) and texel offsets:
+                // operands as in the general uniform-handle TEX form, coordinates (layer first)
+                // then offsets, packed over Ra and Rb; Maxwell TLD4.B takes the handle first
+                // among its meta registers, then the offsets.
+                constexpr std::array<u32, 8> coordinate_count{0, 2, 0, 3, 0, 3, 0, 4};
+                constexpr std::array<u32, 8> maxwell_type{0, 2, 0, 6, 0, 3, 0, 7};
+                const u32 dimension = insn.Bits(61, 3);
+                const u32 coordinates = coordinate_count[dimension];
+                const u32 offset_registers = offset_mode == 1 ? 1U : offset_mode == 2 ? 2U : 0U;
+                const u32 count = coordinates + offset_registers;
+                const u32 in_a = insn.Bits(60, 1) ? (count <= 4 ? (count + 1) / 2 : 4) : coordinates;
+                const u32 handle = uniform_register(insn.Bits(40, 6));
+                const u32 components = static_cast<u32>(std::popcount(mask));
+                const bool split = second_dest != 255;
+                const u32 low_count = split ? std::min(components, 2U) : components;
+                const u32 high_count = components > 2 ? components - 2 : 0;
+                if (!dynamic_texture_handles || coordinates == 0 || offset_mode == 3 ||
+                    (offset_registers != 0 && (dimension == 3 || dimension == 7)) ||
+                    insn.Bits(46, 13) || insn.Bits(59, 1) || insn.Bits(78, 3) ||
+                    insn.Bits(81, 3) != 7 || insn.Bits(89, 1) || !insn.Bits(91, 1) || mask == 0 ||
+                    handle >= 246 || (source_a != 255 && source_a + in_a > register_limit) ||
+                    (count > in_a && source_b != 255 && source_b + (count - in_a) > register_limit) ||
+                    (dest != 255 && dest + low_count > register_limit) ||
+                    (split && second_dest + high_count > register_limit))
+                    return fail(index, "native texture gather mode");
+                const auto value = [&](u32 i) -> u32 {
+                    if (i < in_a) return source_a == 255 ? 255U : source_a + i;
+                    return source_b == 255 ? 255U : source_b + (i - in_a);
+                };
+                const auto copy = [&](u32 target, u32 source) {
+                    emit(0x5c98000000000000ULL | predicate | target | (u64{15} << 39) |
+                         (u64{source} << 20));
+                };
+                for (u32 i = 0; i < coordinates; ++i) copy(250 + i, value(i));
+                copy(246, handle);
+                for (u32 i = 0; i < offset_registers; ++i) copy(247 + i, value(coordinates + i));
+                emit(0xdec0000000000000ULL | predicate | 250 | (u64{250} << 8) | (u64{246} << 20) |
+                     (u64{maxwell_type[dimension]} << 28) | (u64{mask} << 31) |
+                     (u64{offset_mode} << 36) | (u64{insn.Bits(87, 2)} << 38) |
+                     (u64{insn.Bits(90, 1)} << 49) | (u64{7} << 51));
+                for (u32 i = 0; i < components; ++i) {
+                    u32 target = 255;
+                    if (!split || i < 2) target = dest == 255 ? 255U : static_cast<u32>(dest) + i;
+                    else target = second_dest + (i - 2);
+                    if (target != 255) copy(target, 250 + i);
+                }
+                break;
+            }
             if (register_handle && (!insn.Bits(59, 1) || !insn.Bits(60, 1) || insn.Bits(40, 19) ||
                                     offset_mode != 0 || source_a == 255 || source_a + 1 >= 246))
                 return fail(index, "native texture gather mode");
