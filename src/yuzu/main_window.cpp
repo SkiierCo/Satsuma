@@ -70,6 +70,9 @@
 #endif
 
 #include <atomic>
+#include <functional>
+#include <QAbstractNativeEventFilter>
+#include <utility>
 #include <QActionGroup>
 #include <QCheckBox>
 #include <QClipboard>
@@ -255,6 +258,35 @@ struct TitlebarFilter final : QObject {
 
 static TitlebarFilter* g_filter = nullptr;
 static QMetaObject::Connection g_focusConn;
+
+// Moving a window or switching it between framed and borderless does not resize it, so neither
+// Qt nor the presenter redraw. Over the native Vulkan child that leaves stale or missing widgets
+// until the next resize; this reports the moments where a redraw is needed.
+struct WindowRefreshFilter final : QAbstractNativeEventFilter {
+    std::function<void(bool)> on_refresh;
+
+    explicit WindowRefreshFilter(std::function<void(bool)> on_refresh_)
+        : on_refresh{std::move(on_refresh_)} {}
+
+    bool nativeEventFilter(const QByteArray& type, void* message, qintptr*) override {
+        if (type != "windows_generic_MSG") {
+            return false;
+        }
+        switch (static_cast<const MSG*>(message)->message) {
+        case WM_MOVE:
+            on_refresh(false);
+            break;
+        case WM_EXITSIZEMOVE:
+        case WM_DWMCOMPOSITIONCHANGED:
+        case WM_DISPLAYCHANGE:
+            on_refresh(true);
+            break;
+        default:
+            break;
+        }
+        return false;
+    }
+};
 
 } // namespace
 
@@ -471,6 +503,15 @@ MainWindow::MainWindow(bool has_broken_vulkan)
     update_input_timer.setInterval(default_input_update_timeout);
     connect(&update_input_timer, &QTimer::timeout, this, &MainWindow::UpdateInputDrivers);
     update_input_timer.start();
+
+    window_refresh_timer.setSingleShot(true);
+    window_refresh_timer.setInterval(30);
+    connect(&window_refresh_timer, &QTimer::timeout, this, &MainWindow::RefreshWindowComposition);
+#ifdef _WIN32
+    window_event_filter = std::make_unique<WindowRefreshFilter>(
+        [this](bool rebuild_surface) { ScheduleWindowRefresh(rebuild_surface); });
+    qApp->installNativeEventFilter(window_event_filter.get());
+#endif
 
     if (has_broken_vulkan) {
         UISettings::values.has_broken_vulkan = true;
@@ -3383,6 +3424,9 @@ void MainWindow::ShowFullscreen() {
                             screen_geometry.height() + 1);
         window->raise();
         window->showNormal();
+        ScheduleWindowRefresh(true);
+        // DWM finishes the frame change asynchronously; repeat once it has settled.
+        QTimer::singleShot(250, this, [this] { ScheduleWindowRefresh(true); });
     };
 
     if (ui->action_Single_Window_Mode->isChecked()) {
@@ -3409,6 +3453,8 @@ void MainWindow::HideFullscreen() {
             restoreGeometry(UISettings::values.geometry);
             raise();
             show();
+            ScheduleWindowRefresh(true);
+            QTimer::singleShot(250, this, [this] { ScheduleWindowRefresh(true); });
         }
 
         statusBar()->setVisible(ui->action_Show_Status_Bar->isChecked());
@@ -3423,7 +3469,36 @@ void MainWindow::HideFullscreen() {
             render_window->restoreGeometry(UISettings::values.renderwindow_geometry);
             render_window->raise();
             render_window->show();
+            ScheduleWindowRefresh(true);
+            QTimer::singleShot(250, this, [this] { ScheduleWindowRefresh(true); });
         }
+    }
+}
+
+void MainWindow::ScheduleWindowRefresh(bool rebuild_surface) {
+    window_refresh_surface |= rebuild_surface;
+    if (!window_refresh_timer.isActive()) {
+        window_refresh_timer.start();
+    }
+}
+
+void MainWindow::RefreshWindowComposition() {
+    const bool rebuild_surface = std::exchange(window_refresh_surface, false);
+    const auto refresh = [](QWidget* window) {
+        if (!window || !window->isWindow() || !window->isVisible()) {
+            return;
+        }
+#ifdef _WIN32
+        RedrawWindow(reinterpret_cast<HWND>(window->winId()), nullptr, nullptr,
+                     RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_ALLCHILDREN);
+#endif
+        window->update();
+    };
+    refresh(this);
+    refresh(render_window);
+    refresh(perf_overlay);
+    if (rebuild_surface && emulation_running && render_window) {
+        render_window->RequestSurfaceRefresh();
     }
 }
 

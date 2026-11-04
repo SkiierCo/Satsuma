@@ -108,6 +108,7 @@ private:
     bool use_present_thread;
     std::atomic<std::size_t> image_count{};
     std::atomic<std::size_t> swapchain_image_count{};
+    u32 surface_generation{};
     std::atomic<VkFormat> swapchain_image_format{};
 };
 

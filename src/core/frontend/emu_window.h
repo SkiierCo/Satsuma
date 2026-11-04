@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <utility>
 
@@ -128,6 +129,19 @@ public:
      */
     void UpdateCurrentFramebufferLayout(u32 width, u32 height);
 
+    /**
+     * Asks the presenter to rebuild its swapchain on the next frame even though the size is the
+     * same, e.g. after the host window was moved or changed between framed and borderless.
+     * @note This method is thread-safe
+     */
+    void RequestSurfaceRefresh() {
+        surface_generation.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    u32 GetSurfaceGeneration() const {
+        return surface_generation.load(std::memory_order_relaxed);
+    }
+
 protected:
     explicit EmuWindow();
     virtual ~EmuWindow();
@@ -191,6 +205,8 @@ private:
     }
 
     Layout::FramebufferLayout framebuffer_layout; ///< Current framebuffer layout
+
+    std::atomic<u32> surface_generation{};
 
     u32 client_area_width;  ///< Current client width, should be set by window impl.
     u32 client_area_height; ///< Current client height, should be set by window impl.

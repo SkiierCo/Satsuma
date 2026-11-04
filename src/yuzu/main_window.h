@@ -125,6 +125,7 @@ enum class CabinetMode : u8;
 
 namespace Ui {
 class MainWindow;
+class QAbstractNativeEventFilter;
 }
 
 enum class EmulatedDirectoryTarget {
@@ -404,6 +405,8 @@ private slots:
     void ShowFullscreen();
     void HideFullscreen();
     void ToggleWindowMode();
+    void ScheduleWindowRefresh(bool rebuild_surface);
+    void RefreshWindowComposition();
     void ResetWindowSize(u32 width, u32 height);
     void ResetWindowSize720();
     void ResetWindowSize900();
@@ -550,6 +553,9 @@ private:
 #endif
     QTimer mouse_hide_timer;
     QTimer update_input_timer;
+    QTimer window_refresh_timer;
+    bool window_refresh_surface = false;
+    std::unique_ptr<QAbstractNativeEventFilter> window_event_filter;
 
     QString startup_icon_theme;
 

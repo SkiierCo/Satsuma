@@ -130,6 +130,7 @@ PresentManager::PresentManager(const vk::Instance& instance_,
     , blit_supported{CanBlitToSwapchain(device.GetPhysical(), swapchain.GetImageViewFormat())}
     , storage_supported{CanStoreToFrame(device.GetPhysical(), swapchain.GetImageFormat())}
     , use_present_thread{Settings::values.async_presentation.GetValue()}
+    , surface_generation{render_window_.GetSurfaceGeneration()}
 {
     SetImageCount();
 
@@ -430,7 +431,10 @@ void PresentManager::CopyToSwapchainImpl(Frame* frame) {
     const bool is_suboptimal = swapchain.NeedsRecreation();
     const bool size_changed =
         swapchain.GetWidth() != frame->width || swapchain.GetHeight() != frame->height;
-    if (is_suboptimal || size_changed) {
+    const u32 generation = render_window.GetSurfaceGeneration();
+    const bool surface_refresh = generation != surface_generation;
+    surface_generation = generation;
+    if (is_suboptimal || size_changed || surface_refresh) {
         RecreateSwapchain(frame);
     }
 
