@@ -6,6 +6,12 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-04 (third round)
 
+- **Blit dither bias as on the console.** Native fragment shaders read words 0x10-0x18 of the
+  blit constant block as an integer dither bias, which the console leaves zero. Satsuma filled
+  them with the texel size and UV scale, and patched only Kirby Air Riders' SMAA resolve by
+  removing its add. Fragment shaders now read zero there, as on the console; vertex shaders
+  keep the texel size and UV scale. Shaders already in the pipeline cache keep their old
+  translation. Needs testing in Kirby.
 - **12 GiB of console memory, as on the Switch 2.** The 12 GB layout used to add an extra
   8 GiB pool (20 GiB in all) for the graphics server's own memory (`nx2:gpu` 214 GPU-only
   and sparse regions). That memory now comes from the system pool inside the 12 GiB, as on

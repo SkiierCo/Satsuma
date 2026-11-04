@@ -70,6 +70,12 @@ struct BlitProgram {
     }
 };
 
+void RequireZero(Value value) {
+    value = value.Resolve();
+    REQUIRE(value.IsImmediate());
+    REQUIRE(value.U32() == 0U);
+}
+
 void RequireBlitWord(Value value, u32 offset) {
     value = value.Resolve();
     if (offset == 0x18) {
@@ -85,13 +91,12 @@ void RequireBlitWord(Value value, u32 offset) {
     const auto* dimension = reciprocal->Arg(0).InstRecursive();
     REQUIRE(dimension->GetOpcode() == Opcode::CompositeExtractF32x4);
     REQUIRE(dimension->Arg(0).InstRecursive()->GetOpcode() == Opcode::RenderArea);
-    REQUIRE(dimension->Arg(1).U32() == (offset == 0x10 ? 0U : 1U));
+    REQUIRE(dimension->Arg(1).U32() == (offset == 0x0 || offset == 0x10 ? 0U : 1U));
 }
 
 }
 
-TEST_CASE("Blit dither changes only the float color use of shared bias arithmetic",
-          "[video_core][blit_dither]") {
+TEST_CASE("Native fragment shaders read the dither bias words as zero", "[video_core][blit_dither]") {
     for (const u32 offset : {0x10U, 0x14U, 0x18U}) {
         for (const auto opcode : {Opcode::IAdd32, Opcode::ISub32}) {
             BlitProgram shader;
@@ -99,99 +104,72 @@ TEST_CASE("Blit dither changes only the float color use of shared bias arithmeti
             const Value bits = shader.ColorBits();
             const Value sum = shader.Emit(opcode, {bits, bias});
             const Value color = shader.Emit(Opcode::BitCastF32U32, {sum});
-            const Value integer = shader.Emit(Opcode::IAdd32, {sum, Value{7U}});
-            const Value bias_float = shader.Emit(Opcode::BitCastF32U32, {bias});
-            const Value fp = shader.Emit(Opcode::FPAdd32, {bias_float, Value{1.0f}});
             const Value typed_load = shader.Emit(Opcode::GetCbufF32, {Value{17U}, Value{offset}});
             const Value typed_fp = shader.Emit(Opcode::FPAdd32, {typed_load, Value{1.0f}});
             shader.Run();
-            REQUIRE(color.Inst()->Arg(0).Resolve() == bits);
-            REQUIRE(integer.Inst()->Arg(0) == sum);
+            // The add stays, as on the console; it adds zero.
+            REQUIRE(color.Inst()->Arg(0) == sum);
             REQUIRE(sum.Inst()->Arg(0) == bits);
-            RequireBlitWord(sum.Inst()->Arg(1), offset);
-            REQUIRE(fp.Inst()->Arg(0) == bias_float);
-            RequireBlitWord(bias_float.Inst()->Arg(0), offset);
+            RequireZero(sum.Inst()->Arg(1));
             REQUIRE(typed_fp.Inst()->Arg(0) == typed_load);
             REQUIRE(typed_load.Resolve().InstRecursive()->GetOpcode() == Opcode::BitCastF32U32);
-            RequireBlitWord(typed_load.Resolve().InstRecursive()->Arg(0), offset);
-            REQUIRE(shader.program.info.uses_render_area);
+            RequireZero(typed_load.Resolve().InstRecursive()->Arg(0));
         }
     }
 }
 
-TEST_CASE("Blit dither removes the bias from a phi of float colors",
+TEST_CASE("Native fragment shaders read a zero pair at the dither bias", "[video_core][blit_dither]") {
+    BlitProgram shader;
+    const Value pair = shader.Emit(Opcode::GetCbufU32x2, {Value{17U}, Value{0x10U}});
+    const Value texel = shader.Cbuf(17, 0x0);
+    shader.Run();
+    const auto* composite = pair.Resolve().InstRecursive();
+    REQUIRE(composite->GetOpcode() == Opcode::CompositeConstructU32x2);
+    RequireZero(composite->Arg(0));
+    RequireZero(composite->Arg(1));
+    RequireBlitWord(texel, 0x0);
+}
+
+TEST_CASE("Fragment shaders keep the other blit words", "[video_core][blit_dither]") {
+    BlitProgram shader;
+    const Value width = shader.Cbuf(17, 0x0);
+    const Value height = shader.Cbuf(17, 0x4);
+    const Value scale = shader.Cbuf(17, 0x1c);
+    shader.Run();
+    RequireBlitWord(width, 0x0);
+    RequireBlitWord(height, 0x4);
+    REQUIRE(scale.Resolve().IsImmediate());
+    REQUIRE(scale.Resolve().U32() == 0x3f800000U);
+    REQUIRE(shader.program.info.uses_render_area);
+}
+
+TEST_CASE("Vertex and non-native shaders keep the texel size and UV scale at 0x10-0x18",
           "[video_core][blit_dither]") {
-    for (const bool float_operands : {true, false}) {
-        BlitProgram shader;
-        const Value bias = shader.Cbuf(17, 0x10);
-        const Value linear = shader.ColorBits();
-        const Value encoded = float_operands ? shader.ColorBits() : Value{0x3f000000U};
-        shader.block.AppendNewInst(Opcode::Phi, {});
-        IR::Inst* const phi = &shader.block.back();
-        phi->AddPhiOperand(&shader.block, linear);
-        phi->AddPhiOperand(&shader.block, encoded);
-        const Value sum = shader.Emit(Opcode::IAdd32, {Value{phi}, bias});
-        const Value color = shader.Emit(Opcode::BitCastF32U32, {sum});
-        shader.Run();
-        if (float_operands) {
-            REQUIRE(color.Inst()->Arg(0).Resolve() == Value{phi});
-        } else {
-            REQUIRE(color.Inst()->Arg(0) == sum);
+    for (const bool vertex : {true, false}) {
+        for (const u32 offset : {0x10U, 0x14U, 0x18U}) {
+            BlitProgram shader{vertex ? Shader::Stage::VertexB : Shader::Stage::Fragment};
+            shader.env.native = vertex;
+            const Value word = shader.Cbuf(17, offset);
+            shader.Run();
+            RequireBlitWord(word, offset);
         }
     }
 }
 
-TEST_CASE("Blit dither follows cbuf and arithmetic identities with either add order",
-          "[video_core][blit_dither]") {
-    BlitProgram shader;
-    const Value bank = shader.Emit(Opcode::Identity, {Value{17U}});
-    const Value offset = shader.Emit(Opcode::Identity, {Value{0x10U}});
-    const Value load = shader.Emit(Opcode::GetCbufU32, {bank, offset});
-    const Value alias = shader.Emit(Opcode::Identity, {load});
-    const Value bias = shader.Emit(Opcode::Identity, {alias});
-    const Value bits = shader.ColorBits();
-    const Value color_alias = shader.Emit(Opcode::Identity, {bits});
-    const Value sum = shader.Emit(Opcode::IAdd32, {bias, color_alias});
-    const Value sum_alias = shader.Emit(Opcode::Identity, {sum});
-    const Value color = shader.Emit(Opcode::BitCastF32U32, {sum_alias});
+TEST_CASE("Compute shaders keep their bank 17 reads", "[video_core][blit_dither]") {
+    BlitProgram shader{Shader::Stage::Compute};
+    const Value word = shader.Cbuf(17, 0x10);
     shader.Run();
-    REQUIRE(color.Inst()->Arg(0).Resolve() == bits);
-    REQUIRE(sum.Inst()->Arg(1) == color_alias);
-    RequireBlitWord(bias, 0x10);
+    REQUIRE(word.Inst()->GetOpcode() == Opcode::GetCbufU32);
 }
 
-TEST_CASE("Blit dither preserves unrelated banks and integer arithmetic",
-          "[video_core][blit_dither]") {
-    BlitProgram shader;
-    const Value blit = shader.Cbuf(17, 0x10);
-    const Value unrelated = shader.Cbuf(2, 0x10);
-    const Value bits = shader.ColorBits();
-    const Value other_sum = shader.Emit(Opcode::IAdd32, {bits, unrelated});
-    const Value other_color = shader.Emit(Opcode::BitCastF32U32, {other_sum});
-    const Value integer_sum = shader.Emit(Opcode::IAdd32, {Value{123U}, blit});
-    const Value integer_float = shader.Emit(Opcode::BitCastF32U32, {integer_sum});
-    const Value reversed_sub = shader.Emit(Opcode::ISub32, {blit, bits});
-    const Value reversed_color = shader.Emit(Opcode::BitCastF32U32, {reversed_sub});
-    shader.Run();
-    REQUIRE(unrelated.Inst()->GetOpcode() == Opcode::GetCbufU32);
-    REQUIRE(other_color.Inst()->Arg(0) == other_sum);
-    REQUIRE(integer_float.Inst()->Arg(0) == integer_sum);
-    REQUIRE(reversed_color.Inst()->Arg(0) == reversed_sub);
-    RequireBlitWord(blit, 0x10);
-}
-
-TEST_CASE("Blit dither preserves root table exclusions before rewriting uses",
-          "[video_core][blit_dither]") {
+TEST_CASE("Blit words keep root table exclusions", "[video_core][blit_dither]") {
     for (const bool pair : {false, true}) {
         BlitProgram shader;
         const Value bias = shader.Cbuf(17, 0x10);
-        const Value bits = shader.ColorBits();
-        const Value sum = shader.Emit(Opcode::IAdd32, {bits, bias});
-        const Value color = shader.Emit(Opcode::BitCastF32U32, {sum});
         const Value root = shader.Emit(pair ? Opcode::GetCbufU32x2 : Opcode::GetCbufU32,
                                        {Value{17U}, Value{pair ? 0x5cU : 0x80U}});
         shader.Run();
-        REQUIRE(color.Inst()->Arg(0) == sum);
         REQUIRE(bias.Inst()->GetOpcode() == Opcode::GetCbufU32);
         REQUIRE(root.Inst()->GetOpcode() ==
                 (pair ? Opcode::GetCbufU32x2 : Opcode::GetCbufU32));
@@ -202,36 +180,4 @@ TEST_CASE("Blit dither preserves root table exclusions before rewriting uses",
     shader.Run();
     REQUIRE(zero_word.Inst()->GetOpcode() == Opcode::GetCbufU32);
     REQUIRE_FALSE(shader.program.info.uses_render_area);
-}
-
-TEST_CASE("Blit dither is limited to fragment bias words and color bitcasts",
-          "[video_core][blit_dither]") {
-    for (const auto stage : {Shader::Stage::VertexB, Shader::Stage::Fragment, Shader::Stage::Compute}) {
-        for (const u32 offset : {0U, 0x8U, 0x1cU}) {
-            BlitProgram shader{stage};
-            const Value bias = shader.Cbuf(17, offset);
-            const Value bits = shader.ColorBits();
-            const Value sum = shader.Emit(Opcode::IAdd32, {bits, bias});
-            const Value color = shader.Emit(Opcode::BitCastF32U32, {sum});
-            shader.Run();
-            REQUIRE(color.Inst()->Arg(0) == sum);
-        }
-    }
-    for (const auto stage : {Shader::Stage::VertexB, Shader::Stage::Compute}) {
-        BlitProgram shader{stage};
-        const Value bias = shader.Cbuf(17, 0x10);
-        const Value bits = shader.ColorBits();
-        const Value sum = shader.Emit(Opcode::IAdd32, {bits, bias});
-        const Value color = shader.Emit(Opcode::BitCastF32U32, {sum});
-        shader.Run();
-        REQUIRE(color.Inst()->Arg(0) == sum);
-    }
-    BlitProgram shader;
-    shader.env.native = false;
-    const Value bias = shader.Cbuf(17, 0x10);
-    const Value bits = shader.ColorBits();
-    const Value sum = shader.Emit(Opcode::IAdd32, {bits, bias});
-    const Value color = shader.Emit(Opcode::BitCastF32U32, {sum});
-    shader.Run();
-    REQUIRE(color.Inst()->Arg(0) == sum);
 }

@@ -18,25 +18,6 @@ struct PositionInst {
 };
 using PositionInstVector = boost::container::small_vector<PositionInst, 24>;
 
-/// True when every value reaching this one, through phis, is the bit pattern of a float.
-bool IsFloatBits(const IR::Value& value, int depth) {
-    const IR::Inst* const inst = value.TryInstRecursive();
-    if (!inst) {
-        return false;
-    }
-    if (inst->GetOpcode() == IR::Opcode::BitCastU32F32) {
-        return true;
-    }
-    if (inst->GetOpcode() != IR::Opcode::Phi || depth == 4) {
-        return false;
-    }
-    for (size_t arg = 0; arg < inst->NumArgs(); ++arg) {
-        if (!IsFloatBits(inst->Arg(arg), depth + 1)) {
-            return false;
-        }
-    }
-    return true;
-}
 } // Anonymous namespace
 
 void PositionPass(Environment& env, IR::Program& program) {
@@ -99,6 +80,9 @@ void PositionPass(Environment& env, IR::Program& program) {
 // render target it holds: texel size (0x0/0x4, again at 0x10/0x14), size (0x8/0xc), a UV scale of
 // 1 (0x18/0x1c), the UV clamp rectangle 0,0..1,1 (0x30-0x3c, read by the fragment shader), a zero
 // dither bias (0x40-0x48) and the integer source rectangle 0,0..W-1,H-1 (0x50-0x5c).
+// Fragment shaders read 0x10-0x18 as an integer dither bias they add to their output bits, which
+// the console leaves zero there (Kirby Air Riders' SMAA resolve reads the texel size at 0x0/0x4
+// and the bias at 0x10-0x18 in one shader), so fragment shaders get zero at those three words.
 void BlitConstantsPass(Environment& env, IR::Program& program) {
     if (env.ShaderStage() != Stage::VertexB && env.ShaderStage() != Stage::Fragment) {
         return;
@@ -134,40 +118,6 @@ void BlitConstantsPass(Environment& env, IR::Program& program) {
     if (!reads_nonzero_word) {
         return;
     }
-    // Native fragment shaders add an integer dither bias from 0x10-0x18 to their output bits; the
-    // console leaves it zero there, while the blit block holds texel size and UV scale. Kirby Air
-    // Riders' SMAA resolve adds it to a phi of sRGB-encoded colours, which turned the world white.
-    if (env.ShaderStage() == Stage::Fragment && env.HasNativeInstructions()) {
-        for (IR::Block* const block : program.post_order_blocks) {
-            for (IR::Inst& inst : block->Instructions()) {
-                if (inst.GetOpcode() != IR::Opcode::BitCastF32U32) {
-                    continue;
-                }
-                const IR::Inst* const arithmetic = inst.Arg(0).TryInstRecursive();
-                if (!arithmetic || (arithmetic->GetOpcode() != IR::Opcode::IAdd32 &&
-                                    arithmetic->GetOpcode() != IR::Opcode::ISub32)) {
-                    continue;
-                }
-                for (size_t bias_arg = 0; bias_arg < 2; ++bias_arg) {
-                    if (bias_arg == 0 && arithmetic->GetOpcode() == IR::Opcode::ISub32) {
-                        continue;
-                    }
-                    const IR::Inst* const bias = arithmetic->Arg(bias_arg).TryInstRecursive();
-                    if (!bias || bias->GetOpcode() != IR::Opcode::GetCbufU32 ||
-                        !IsFloatBits(arithmetic->Arg(1 - bias_arg), 0) ||
-                        !bias->Arg(0).IsImmediate() || bias->Arg(0).U32() != 17 ||
-                        !bias->Arg(1).IsImmediate()) {
-                        continue;
-                    }
-                    const u32 offset = bias->Arg(1).U32();
-                    if (offset == 0x10 || offset == 0x14 || offset == 0x18) {
-                        inst.SetArg(0, arithmetic->Arg(1 - bias_arg));
-                        break;
-                    }
-                }
-            }
-        }
-    }
     bool used{};
     for (IR::Block* const block : program.post_order_blocks) {
         for (IR::Inst& inst : block->Instructions()) {
@@ -182,7 +132,11 @@ void BlitConstantsPass(Environment& env, IR::Program& program) {
             IR::IREmitter ir{*block, IR::Block::InstructionList::s_iterator_to(inst)};
             const IR::F32 width{ir.RenderAreaWidth()};
             const IR::F32 height{ir.RenderAreaHeight()};
+            const bool fragment{env.ShaderStage() == Stage::Fragment && env.HasNativeInstructions()};
             const auto word = [&](u32 offset) -> IR::U32 {
+                if (fragment && offset >= 0x10 && offset <= 0x18) {
+                    return ir.Imm32(0U);
+                }
                 switch (offset) {
                 case 0x0:
                 case 0x10:
