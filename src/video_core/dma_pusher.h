@@ -185,6 +185,13 @@ private:
     void CallMultiMethod(const u32* base_start, u32 num_methods);
     [[nodiscard]] bool WantsSegment() const;
     void ReportUnboundSubchannel();
+
+public:
+    /// Once per session: where the entry being processed came from, and whether its words still
+    /// match guest memory (Mario Kart World's command stream desync).
+    void ReportDesync(const char* reason);
+
+private:
     void WatchArgument(u32 method, u32 argument) const;
     void RecordCapture(const char* phase, std::span<const CommandHeader> commands = {},
                        std::size_t word_offset = 0) const noexcept;

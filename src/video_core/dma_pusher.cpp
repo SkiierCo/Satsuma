@@ -951,17 +951,12 @@ void DmaPusher::FlushGpuWrittenCommands(GPUVAddr address, size_t size) {
     }
 }
 
-void DmaPusher::ReportUnboundSubchannel() {
-    // Methods sent to a subchannel with no engine (no SetObject yet) are dropped.
-    static std::atomic<u32> reported{};
-    const u32 count = reported.fetch_add(1);
-    if (count < 8) {
-        LOG_WARNING(HW_GPU, "Dropping method {:#x} on unbound subchannel {}", dma_state.method,
-                    dma_state.subchannel);
-    }
+void DmaPusher::ReportDesync(const char* reason) {
     // Mario Kart World desyncs into methods on unbound subchannels, then garbage state. Once,
     // record where the entry came from and whether the words processed match guest memory now.
-    if (count != 0 || report_entry_words == 0 || report_entry_words > command_headers.size()) {
+    static std::atomic<bool> reported{};
+    if (report_entry_words == 0 || report_entry_words > command_headers.size() ||
+        reported.exchange(true)) {
         return;
     }
     std::vector<u32> now(report_entry_words);
@@ -982,14 +977,25 @@ void DmaPusher::ReportUnboundSubchannel() {
         processed.push_back(command_headers[i].argument);
     }
     LOG_ERROR(HW_GPU,
-              "Command stream desync: entry {:#x} ({} words) from {}; {} words now differ in "
+              "Command stream desync ({}): entry {:#x} ({} words) from {}; {} words now differ in "
               "memory (first at word {}). Words {}-{} processed: {:08x}; in memory now: {:08x}. "
               "Entry pages:{}",
-              report_entry_address, report_entry_words, report_entry_source, differing,
+              reason, report_entry_address, report_entry_words, report_entry_source, differing,
               first_difference < report_entry_words ? static_cast<s64>(first_difference) : s64{-1},
               begin, end, fmt::join(processed, " "),
               fmt::join(std::span{now}.subspan(begin, end - begin), " "),
               memory_manager.DescribeCachedRegion(report_entry_address, size_t{report_entry_words} * 4));
+}
+
+void DmaPusher::ReportUnboundSubchannel() {
+    // Methods sent to a subchannel with no engine (no SetObject yet) are dropped.
+    static std::atomic<u32> reported{};
+    const u32 count = reported.fetch_add(1);
+    if (count < 8) {
+        LOG_WARNING(HW_GPU, "Dropping method {:#x} on unbound subchannel {}", dma_state.method,
+                    dma_state.subchannel);
+    }
+    ReportDesync("unbound subchannel");
 }
 
 void DmaPusher::CheckSubmitHash(const CommandListHeader& header, u64 submit_hash) {

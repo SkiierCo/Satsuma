@@ -456,6 +456,7 @@ void Puller::CallPullerMethod(DmaPusher& dma_pusher, const MethodCall& method_ca
     }
     default:
         LOG_ERROR(HW_GPU, "Special puller engine method {:X} not implemented", method);
+        dma_pusher.ReportDesync("unknown host method");
         if (static bool dumped = false; g_nx2_ampere && !dumped) {
             dumped = true;
             dma_pusher.DumpCurrentEntry("unknown host method");
