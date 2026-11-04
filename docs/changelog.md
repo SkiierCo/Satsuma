@@ -11,7 +11,8 @@ in that game yet. The commit history has the full detail.
   memory, and the water and other rendering broke again. Switch Sports' 9.58 GiB plus those
   2.94 GiB is more than the console's 12 GB, so the console can't be backing them whole.
   They now get memory per block as the GPU writes them, as sparse regions already did.
-  `EDEN_NX2_GPU_ONLY_LAZY=0` backs them whole. Needs testing in Switch Sports.
+  `EDEN_NX2_GPU_ONLY_LAZY=0` backs them whole. Tested (Fil): the water is back and the intro
+  is about 3x smoother. The log shows no failed regions and 4 MiB of them actually backed.
 - **Where byte-offset texture handles come from.** Switch Sports' own NVN driver code builds
   handles as `texture | sampler << 20` from pool indices, never byte offsets, so the
   `index x 32` handles the byte-offset rule catches are likely made by the emulator. One

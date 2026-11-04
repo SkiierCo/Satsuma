@@ -51,6 +51,13 @@ by an AND mask, so the value comes from the game's own data, not from Satsuma's 
 tracker. Switch Sports' NVN driver builds handles as `texture | sampler << 20`; what decides
 the texture field is how the driver registers textures in the pool, not checked yet.
 
+## GPU-only regions backed as used
+
+The water broke again under the 12 GiB cap: four of the six 490 MiB GPU-only regions (render
+targets) got no memory. They are now backed per block as the GPU writes them. Tested (Fil):
+water back, intro about 3x smoother. The log shows every region created, none failed, and
+4 MiB actually backed.
+
 ## Next
 
 Test the 2026-11-04 build: water, UI, a game mode. Send the log; any "Mesh program" lines
