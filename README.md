@@ -8,66 +8,46 @@
 <!-- lang: en-GB -->
 
 <h1 align="center">
+  <img src="dist/satsuma.png" alt="Satsuma" width="200">
   <br>
-  <a href="https://git.eden-emu.dev/eden-emu/eden"><img src="https://github.com/user-attachments/assets/35031845-4bfa-4916-8bf5-bc3bce67d5e2" alt="Eglantine" width="200"></a>
-  <br>
-  <b>Eglantine</b>
-  <br>
+  <b>Satsuma</b>
 </h1>
 
-<h4 align="center"><b>Eglantine</b> is a free and opensource (FOSS) Switch 2 emulator, derived from Eden, Yuzu and Sudachi - started by developer Camille LaVey.
-It's written in C++ with portability in mind, with builds for Windows, Linux and macOS
-</h4>
+<h4 align="center">An open-source Nintendo Switch 2 emulator for Windows, written in C++.</h4>
 
 <p align="center">
-    </a>
-    <a href="https://discord.gg/jCCZ58VExk">
-        <img src="https://img.shields.io/discord/1367654015269339267?color=5865F2&label=Eglantine&logo=discord&logoColor=white"
-            alt="Discord">
-    </a>
-  
-</p>
-
-<p align="center">
-  <a href="#compatibility">Compatibility</a> |
-  <a href="#development">Development</a> |
+  <a href="#status">Status</a> |
   <a href="#building">Building</a> |
-  <a href="#download">Download</a> |
-  <a href="#support">Support</a> |
+  <a href="#credits">Credits</a> |
   <a href="#license">License</a>
 </p>
 
-## Compatibility
+## Status
 
-The emulator is capable of running Mario Kart World at decent/full speed depending on specs and configurations, and Splatoon Raiders at variable performances
+Satsuma is in active development. Switch 2 titles boot and several are playable;
+others still render incorrectly or have missing audio. Known issues are tracked
+per game as they are found.
 
-A list of supported games will be available in future. Please be patient.
-
-## Development
-For development discussions, please join us on [Discord](https://discord.gg/jCCZ58VExk)
-
-If you would like to contribute, we are open to new developers and pull requests. Please ensure that your work is of a high standard and properly documented. You can also contact any of the developers on Discord or Stoat to learn more about the current state of the emulator.
-
-## Documentation
-
-We have a user manual! See our [User Handbook](./docs/user/README.md).
+Satsuma does not include keys, firmware or games. You need to dump them from your
+own console.
 
 ## Building
 
-See the [General Build Guide](docs/Build.md)
+Satsuma builds on Windows with Visual Studio 2026 (x64 C++ tools), CMake and Ninja.
+See [BUILD-SATSUMA.md](BUILD-SATSUMA.md) for the exact commands. The general
+[build guide](docs/Build.md) covers dependencies and other platforms.
 
-For information on provided development tooling, see the [Tools directory](./tools)
+Settings, saves and caches live in `%APPDATA%\satsuma`. A `user` folder next to
+the executable switches to portable mode.
 
-## Download
+## Credits
 
-You can download the latest releases from [here](https://github.com/Djihads80/Eglantine/releases).
-
-## Support
-
-We currently do not take in any donations for the time being
-
-If you would prefer to support us in a different way, please join our [Discord](https://discord.gg/jCCZ58VExk)
+Satsuma is derived from [Eglantine](https://github.com/Djihads80/Eglantine),
+itself based on [Eden](https://git.eden-emu.dev/eden-emu/eden), yuzu and Sudachi.
+Their copyright notices are kept in the source.
 
 ## License
 
-Eglantine is licensed under the GPLv3 (or any later version). Refer to the [LICENSE.txt](https://github.com/Djihads80/Eglantine/blob/nx2/LICENSE.txt) file.
+Satsuma is licensed under the GPLv3 or any later version. See
+[LICENSE.txt](LICENSE.txt). Some components are under other licences, listed in
+[LICENSES](LICENSES).
