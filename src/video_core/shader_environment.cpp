@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <span>
 #include <array>
 #include <chrono>
 #include <cstdlib>
@@ -18,6 +19,8 @@
 #include <memory>
 #include <optional>
 #include <utility>
+
+#include <fmt/ranges.h>
 
 #include "common/assert.h"
 #include "common/cityhash.h"
@@ -742,6 +745,18 @@ GraphicsEnvironment::GraphicsEnvironment(Tegra::Engines::Maxwell3D& maxwell3d_,
             const GPUVAddr address{(static_cast<u64>(geometry.reserved[0] & 0xff) << 32) |
                                    geometry.reserved[1]};
             gpu_memory->ReadBlock(address, &mesh_primitive_header, sizeof(mesh_primitive_header));
+        }
+        // Switch Sports' mesh pipelines translate with SET_MESH_SHADER_A zero: record what the
+        // registers held here, with the methods around them, for the first few programs.
+        static std::atomic<u32> reports{};
+        if (mesh_registers[0] == 0 && reports.fetch_add(1, std::memory_order_relaxed) < 16) {
+            LOG_WARNING(HW_GPU,
+                        "Mesh program {:#x} ({}): control {:#x} A {:#x} B {:#x} init {:#x}; "
+                        "methods 0x1140-0x116c: {:08x}",
+                        program_base, stage == Shader::Stage::Task ? "task" : "mesh",
+                        mesh_regs.reg_array[Maxwell::MeshControl], mesh_registers[0],
+                        mesh_registers[1], mesh_registers[2],
+                        fmt::join(std::span{mesh_regs.reg_array}.subspan(0x1140 / 4, 12), " "));
         }
     }
     if (maxwell3d->GetNativeMacroEngine().native_turing) {
