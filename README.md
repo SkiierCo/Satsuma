@@ -37,7 +37,7 @@ the executable switches to portable mode.
 
 Satsuma is derived from [Eglantine](https://github.com/Djihads80/Eglantine), Updated and
 maintained by Fil, Some patches and additions are thanks to efforts by Selevet, Zortos, and
-Penis6 respectively
+Penis6 respectively.
 
 ## License
 
