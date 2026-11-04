@@ -36,3 +36,7 @@ EDEN_NX2_DMA_SCATTER=0
 
 # GPU-only regions (nx2:gpu 214) get memory as the GPU writes them; =0 backs them whole.
 #EDEN_NX2_GPU_ONLY_LAZY=0
+
+# Per game: EDEN_NX2_VSYNC_HZ_<program ID> overrides EDEN_NX2_VSYNC_HZ for that game.
+# Super Mario Bros. Wonder at 60.
+EDEN_NX2_VSYNC_HZ_010015100B514000=60

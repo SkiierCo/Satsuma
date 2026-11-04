@@ -6,6 +6,13 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-04 (third round)
 
+- **Per-game display rate.** `EDEN_NX2_VSYNC_HZ_<program ID>` overrides `EDEN_NX2_VSYNC_HZ`
+  for one game. The shipped switches set Super Mario Bros. Wonder to 60 under the 120 Hz
+  default (Fil's request).
+- **Super Mario Bros. Wonder: fully playable** (Fil).
+- **Add-on content answers logged.** Wonder's Switch 2 Edition DLC is installed in NAND but not
+  picked up; the log now shows what the add-on content service answers. In two runs the game
+  only checked the mount status and never asked for its add-on list.
 - **GPU-only regions backed as they're used.** With 12 GiB of console memory, four of Switch
   Sports' six 490 MiB GPU-only regions (`nx2:gpu` 214, where it keeps render targets) got no
   memory, and the water and other rendering broke again. Switch Sports' 9.58 GiB plus those

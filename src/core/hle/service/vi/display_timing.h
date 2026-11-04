@@ -3,12 +3,16 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <charconv>
 #include <chrono>
 #include <cstdlib>
 #include <string_view>
 
+#include <fmt/format.h>
+
 #include "common/common_types.h"
+#include "common/settings.h"
 
 namespace Service::VI {
 
@@ -23,12 +27,25 @@ inline int ParseDisplayRefreshRate(std::string_view text) {
                : 60;
 }
 
+/// The emulated display's rate: EDEN_NX2_VSYNC_HZ, or EDEN_NX2_VSYNC_HZ_<program ID> (16 hex
+/// digits) for one game (Super Mario Bros. Wonder runs at 60 under a 120 Hz default).
 inline int DisplayRefreshRate() {
-    static const int rate = [] {
+    static const int global_rate = [] {
         const char* text = std::getenv("EDEN_NX2_VSYNC_HZ");
         return text ? ParseDisplayRefreshRate(text) : 60;
     }();
-    return rate;
+    // Several games can run in one session: the override is looked up again when the game changes.
+    static std::atomic<u64> cached_program{~u64{0}};
+    static std::atomic<int> cached_rate{0};
+    const u64 program_id = Settings::GetCurrentProgramID();
+    if (cached_program.load(std::memory_order_acquire) != program_id) {
+        const auto name = fmt::format("EDEN_NX2_VSYNC_HZ_{:016X}", program_id);
+        const char* const text = std::getenv(name.c_str());
+        cached_rate.store(text ? ParseDisplayRefreshRate(text) : global_rate,
+                          std::memory_order_relaxed);
+        cached_program.store(program_id, std::memory_order_release);
+    }
+    return cached_rate.load(std::memory_order_relaxed);
 }
 
 inline std::chrono::nanoseconds DisplayFramePeriod() {
