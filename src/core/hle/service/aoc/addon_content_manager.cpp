@@ -115,6 +115,8 @@ Result IAddOnContentManager::CountAddOnContent(Out<u32> out_count, ClientProcess
     *out_count = static_cast<u32>(
         std::count_if(add_on_content.begin(), add_on_content.end(),
                       [current](u64 tid) { return CheckAOCTitleIDMatchesBase(tid, current); }));
+    LOG_INFO(Service_AOC, "CountAddOnContent for {:016X}: {} ({} add-ons installed in all)", current,
+             *out_count, add_on_content.size());
 
     R_SUCCEED();
 }
@@ -145,6 +147,8 @@ Result IAddOnContentManager::ListAddOnContent(Out<u32> out_count,
     std::rotate(out.begin(), out.begin() + offset, out.end());
 
     std::memcpy(out_addons.data(), out.data(), *out_count * sizeof(u32));
+    LOG_INFO(Service_AOC, "ListAddOnContent for {:016X} offset {} count {}: {} returned, first {}",
+             current, offset, count, *out_count, *out_count != 0 ? out[0] : 0);
 
     R_SUCCEED();
 }
@@ -164,6 +168,7 @@ Result IAddOnContentManager::GetAddOnContentBaseId(Out<u64> out_title_id,
     }
 
     *out_title_id = res.first->GetDLCBaseTitleId();
+    LOG_INFO(Service_AOC, "GetAddOnContentBaseId: {:016X}", *out_title_id);
 
     R_SUCCEED();
 }
