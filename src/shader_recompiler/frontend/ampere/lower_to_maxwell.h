@@ -52,7 +52,7 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
         uses_uniform_bank |= op == 0x83b && instruction.Bits(91, 1);
         uses_uniform_bank |= op == 0xd08 || op == 0x896;
         uses_uniform_bank |= op == 0x3c4 || op == 0x2bd || op == 0xc0b || op == 0xc0c || op == 0x986 || op == 0x9a8 || op == 0xc12 || op == 0xc17 || op == 0xe24 || op == 0xc24 || op == 0xd00 || op == 0xd09 || op == 0x9c3 || op == 0xc45 || op == 0x2a4 || op == 0x891 || op == 0x890 || op == 0x290 || op == 0x28c || op == 0x88c || op == 0x287 || op == 0x887 || op == 0x958 || op == 0xab9 || op == 0xabb || op == 0x899 || op == 0xc20 || op == 0xe21 || op == 0xe23 || op == 0xc02 ||
-                             op == 0x886 || op == 0x3c2 || op == 0xc82 || op == 0x882 || op == 0x292 || op == 0x092 || op == 0x892 || op == 0x291 || op == 0x981 || op == 0xc13 || op == 0xc10 || op == 0xc11 || op == 0xc23 || op == 0x526 || op == 0x2be || op == 0x2bf || op == 0x8a4 || op == 0xd05 || (op == 0x984 && instruction.Bits(91, 1)) || op == 0x89c || op == 0x883 || op == 0x2a5 || op == 0xd06 || op == 0x299 || op == 0xc09 || op == 0xf60 || op == 0xf63 || op == 0x8a5 || (op == 0x81c && instruction.Bits(67, 1));
+                             op == 0x886 || op == 0x3c2 || op == 0xc82 || op == 0x882 || op == 0x292 || op == 0x092 || op == 0x892 || op == 0x291 || op == 0x981 || op == 0xc13 || op == 0xc10 || op == 0xc11 || op == 0xc23 || op == 0x526 || op == 0x2be || op == 0x2bf || op == 0x8a4 || op == 0xd05 || (op == 0x984 && instruction.Bits(91, 1)) || op == 0x89c || op == 0x883 || op == 0x2a5 || op == 0xd06 || op == 0x299 || op == 0xc09 || op == 0xf60 || op == 0xf63 || op == 0xf66 || op == 0x8a5 || (op == 0x81c && instruction.Bits(67, 1));
     }
     const auto address_of = [](u32 index) { return 0x50U + index * 8 + ((index + 1) / 3) * 8; };
     const auto fail = [&](u32 index, std::string_view reason) {
@@ -1192,6 +1192,7 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
         }
         case 0x998:
         case 0x99c: { // SULD / SUST.P.IGN with the handle in a register (The Duskbloods). From Lichii.
+            // Maxwell's dimension codes; also 1D buffers (1, Cyberpunk 2077's compute stores).
             const bool store = opcode == 0x99c;
             const u32 data = insn.Bits(store ? 32 : 16, 8);
             const u32 coordinate = insn.Bits(24, 8), handle = insn.Bits(64, 8);
@@ -1200,9 +1201,9 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
             const u32 reserved = uses_uniform_bank ? 216U : 246U;
             if ((insn.words[1] & ~(store ? 0xe00000ffU : 0xe0000000U)) ||
                 (insn.words[2] & ~0xfffU) != (store ? 0x00100000U : 0x001e0000U) ||
-                (insn.words[3] & 0xc00001ffU) || dimension < 3 || dimension > 5 ||
-                channels == 0 || handle >= reserved || data + count > reserved ||
-                coordinate + (dimension >= 4 ? 3U : 2U) > reserved ||
+                (insn.words[3] & 0xc00001ffU) || (dimension < 3 && dimension != 1) ||
+                dimension > 5 || channels == 0 || handle >= reserved || data + count > reserved ||
+                coordinate + (dimension >= 4 ? 3U : dimension == 1 ? 1U : 2U) > reserved ||
                 (store && (dest != 0 || (channels != 1 && channels != 3 && channels != 15))) ||
                 (!store && (data % (count == 3 ? 4U : count))))
                 return fail(index, "native bindless formatted surface mode");
@@ -1850,6 +1851,62 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
             emit(0xdf48000000000000ULL | predicate | dest | (u64{insn.Bits(24, 8)} << 8) |
                  (u64{1} << 22) | (u64{insn.Bits(72, 4)} << 31) | (u64{insn.Bits(40, 14)} << 36) |
                  (u64{insn.Bits(90, 1)} << 49));
+            break;
+        }
+        case 0xf66: case 0x367: {
+            // TLD through a handle in a uniform register (0xf66, at bits 40-45, as 0xf60 for TEX)
+            // or in a register (0x367, bit 59, the first of the second source block, as 0x361);
+            // Cyberpunk 2077's compute. Operands: coordinates (array index first) in block A,
+            // then the register handle and level (.LL) in block B; packed (bit 60) as two blocks
+            // of up to four. Maxwell TLD.B takes the handle first among its meta registers, then
+            // the level. Texel offsets (76) and multisample (78) are not seen in any captured
+            // game and are rejected.
+            constexpr std::array<u32, 8> coordinate_count{1, 2, 3, 0, 2, 3, 0, 0};
+            constexpr std::array<u32, 8> maxwell_type{0, 2, 4, 0, 1, 3, 0, 0};
+            const bool register_handle = opcode == 0x367;
+            const u32 dimension = insn.Bits(61, 3), lod = insn.Bits(87, 3);
+            const u32 mask = insn.Bits(72, 4), second_dest = insn.Bits(64, 8);
+            const u32 source_a = insn.Bits(24, 8), source_b = insn.Bits(32, 8);
+            const bool level = lod == 3, split = second_dest != 255;
+            const u32 coordinates = coordinate_count[dimension];
+            const u32 count = coordinates + u32{register_handle} + u32{level};
+            const u32 in_a = insn.Bits(60, 1) ? (count <= 4 ? (count + 1) / 2 : 4) : coordinates;
+            const u32 handle = register_handle ? 255U : uniform_register(insn.Bits(40, 6));
+            const u32 limit = uses_uniform_bank ? 216U : 246U;
+            const u32 components = static_cast<u32>(std::popcount(mask));
+            const u32 low_count = split ? std::min(components, 2U) : components;
+            const u32 high_count = components > 2 ? components - 2 : 0;
+            if (!dynamic_texture_handles || coordinates == 0 || (lod != 1 && lod != 3) ||
+                (insn.Bits(60, 1) && count > 4) || insn.Bits(76, 5) ||
+                insn.Bits(81, 3) != 7 || mask == 0 ||
+                (register_handle ? (insn.Bits(40, 19) != 0 || !insn.Bits(59, 1) || insn.Bits(91, 1))
+                                 : (handle >= 246 || insn.Bits(46, 14) != 0 || !insn.Bits(91, 1))) ||
+                (source_a != 255 && source_a + std::min(in_a, count) > limit) ||
+                (count > in_a && source_b != 255 && source_b + (count - in_a) > limit) ||
+                (dest != 255 && dest + low_count > limit) ||
+                (split && second_dest + high_count > limit))
+                return fail(index, "native texel fetch through a handle mode");
+            const auto value = [&](u32 i) -> u32 {
+                if (i < in_a) return source_a == 255 ? 255U : source_a + i;
+                return source_b == 255 ? 255U : source_b + (i - in_a);
+            };
+            const auto copy = [&](u32 target, u32 source) {
+                emit(0x5c98000000000000ULL | predicate | target | (u64{15} << 39) |
+                     (u64{source} << 20));
+            };
+            for (u32 i = 0; i < coordinates; ++i) copy(250 + i, value(i));
+            u32 meta = 246, next = coordinates;
+            if (register_handle) copy(meta++, value(next++));
+            else copy(meta++, handle);
+            if (level) copy(meta++, value(next++));
+            emit(0xdd00000000000000ULL | predicate | 250 | (u64{250} << 8) | (u64{246} << 20) |
+                 (u64{maxwell_type[dimension]} << 28) | (u64{mask} << 31) |
+                 (u64{insn.Bits(90, 1)} << 49) | (u64{7} << 51) | (u64{level} << 55));
+            for (u32 i = 0; i < components; ++i) {
+                const u32 target = !split || i < 2 ? (dest == 255 ? 255U : static_cast<u32>(dest) + i)
+                                                   : second_dest + (i - 2);
+                if (target != 255) copy(target, 250 + i);
+            }
             break;
         }
         case 0xb66: { // TLD.SCR: half explicit fetch, then level zero (.LZ) or a given level (.LL)

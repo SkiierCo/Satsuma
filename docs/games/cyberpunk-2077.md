@@ -21,7 +21,14 @@ now defaulted to 48 kHz and checked.
 Lichii build 70 implements the protocol: shared-memory task and completion queues driving
 a batch Opus decoder. It is ported, with Lichii's tests.
 
+Since the codec port the game launches, to a green screen. The 2026-11-04 log shows five
+compute programs rejected at about 30 and 40 seconds: texel fetches through a
+uniform-register handle (`0xf66`, three) and a register handle (`0x367`), and a 1D-buffer
+surface store through a register handle (`0x99c`). All five now lower. The same log also
+has 96 Fermi 2D "source depth is not one" asserts and 85 storage-buffer tracking warnings;
+not yet looked at. No video decoder activity.
+
 ## Next
 
-Test the 2026-11-04 build for audio. The game uses DLSS too, so tensor emulation may also
-matter once it renders.
+Test for the green screen. If it remains, look at the 2D engine asserts and storage-buffer
+warnings. The game uses DLSS too, so tensor emulation may also matter once it renders.

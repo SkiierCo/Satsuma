@@ -4,6 +4,18 @@ Changes since the Satsuma v1 source snapshot, newest first. Each entry names the
 was found in; "needs testing" means it builds and passes the tests but has not been tried
 in that game yet. The commit history has the full detail.
 
+## 2026-11-04 (third round)
+
+- **Cyberpunk 2077 compute shaders.** Five programs were rejected at load. Added: texel
+  fetches through a uniform-register handle (`0xf66`) or a register handle (`0x367`), 1D,
+  2D, 3D and 1D/2D arrays, level zero or a given level; register-handle surface loads and
+  stores on 1D buffers (`0x99c`). Built from Cyberpunk's own instructions, with tests.
+  Texel offsets and multisample forms of these fetches are not seen in any captured game
+  and stay rejected. Needs testing for the green screen.
+- **Mapping history in the cache probe.** When a shader or command list reads as zeros or
+  garbage, the log now lists the last GPU and device mapping operations at that address
+  (Mario Kart World's crash, Yoshi's zeroed shaders).
+
 ## 2026-11-04 (second round)
 
 - **Shader reuse lost mesh and native state.** Translation goes through a recording wrapper

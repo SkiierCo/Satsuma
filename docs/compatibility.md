@@ -20,7 +20,7 @@ NVIDIA GPU and the Vulkan renderer.
 | Mario Kart World | `0400C3F00006E000` | In game | Performance much better. Crashes consistently: the command stream desyncs (unbound subchannel, bad syncpoint IDs, then garbage GPU state); also seen on 2026-11-03 at 169 s. | — |
 | Nintendo Switch Sports Resort | `04008E001F098000` | In game | Water and UI fixed. Intro stutters, then smooth. The Joy-Con 2 prompt accepts dual Joy-Cons but asks again after OK. Pins missing. | [Details](games/switch-sports-resort.md) |
 | Yoshi | `0400245021D2C000` | In game | Reaches gameplay again; gameplay renders black and many UI elements are missing. Gameplay shaders still read as zeros. | [Details](games/yoshi.md) |
-| Cyberpunk 2077 | `0400DDB020648000` | Boots | Launches to a green screen. | [Details](games/cyberpunk-2077.md) |
-| Kirby Air Riders | `040077201BE50000` | Boots | Aborted at start (2083-0419) asking for built-in font data the emulator answered empty; Lichii's font fix ported, needs testing. | — |
+| Cyberpunk 2077 | `0400DDB020648000` | Boots | Launches to a green screen. Five rejected compute shaders now lower; needs testing. | [Details](games/cyberpunk-2077.md) |
+| Kirby Air Riders | `040077201BE50000` | Boots | Launches since the built-in font fix (was aborting with 2083-0419); black screen. | — |
 
 To report a result, see [CONTRIBUTING.md](../CONTRIBUTING.md).
