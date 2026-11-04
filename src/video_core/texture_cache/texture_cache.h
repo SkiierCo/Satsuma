@@ -1449,6 +1449,19 @@ bool TextureCache<P>::IsRegionGpuModified(DAddr addr, size_t size) {
 }
 
 template <class P>
+std::string TextureCache<P>::DescribeRegion(DAddr addr, size_t size) {
+    std::string out;
+    ForEachImageInRegion(addr, size, [&out](ImageId image_id, ImageBase& image) {
+        out += fmt::format(" image{}(gpu {:#x} dev {:#x}+{:#x} {}x{}x{} format {} flags {:#x})",
+                           image_id.index, image.gpu_addr, image.cpu_addr,
+                           image.guest_size_bytes, image.info.size.width,
+                           image.info.size.height, image.info.size.depth,
+                           static_cast<u32>(image.info.format), static_cast<u32>(image.flags));
+    });
+    return out;
+}
+
+template <class P>
 std::pair<typename TextureCache<P>::Image*, BufferImageCopy> TextureCache<P>::DmaBufferImageCopy(
     const Tegra::DMA::ImageCopy& copy_info, const Tegra::DMA::BufferOperand& buffer_operand,
     const Tegra::DMA::ImageOperand& image_operand, ImageId image_id, bool modifies_image) {

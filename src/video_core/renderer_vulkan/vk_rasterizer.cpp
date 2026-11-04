@@ -1184,6 +1184,22 @@ bool RasterizerVulkan::MustFlushRegion(DAddr addr, u64 size, VideoCommon::CacheT
     return false;
 }
 
+std::string RasterizerVulkan::DescribeCachedRegion(DAddr addr, u64 size) {
+    std::string out;
+    {
+        std::scoped_lock lock{buffer_cache.mutex};
+        if (buffer_cache.IsRegionRegistered(addr, size)) {
+            out += buffer_cache.IsRegionGpuModified(addr, size) ? " buffer(gpu-written)"
+                                                                : " buffer";
+        }
+    }
+    {
+        std::scoped_lock lock{texture_cache.mutex};
+        out += texture_cache.DescribeRegion(addr, size);
+    }
+    return out;
+}
+
 VideoCore::RasterizerDownloadArea RasterizerVulkan::GetFlushArea(DAddr addr, u64 size) {
     VideoCore::RasterizerDownloadArea result{
         .start_address = Common::AlignDown(addr, Core::DEVICE_PAGESIZE),

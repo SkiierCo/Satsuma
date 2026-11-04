@@ -9,6 +9,7 @@
 #include <functional>
 #include <optional>
 #include <span>
+#include <string>
 #include <utility>
 #include "common/common_types.h"
 #include "common/polyfill_thread.h"
@@ -114,6 +115,12 @@ public:
                                  VideoCommon::CacheType which = VideoCommon::CacheType::All) = 0;
 
     virtual RasterizerDownloadArea GetFlushArea(DAddr addr, u64 size) = 0;
+
+    /// Diagnostics: which caches hold the region and in what state.
+    virtual std::string DescribeCachedRegion([[maybe_unused]] DAddr addr,
+                                             [[maybe_unused]] u64 size) {
+        return {};
+    }
 
     /// Notify rasterizer that any caches of the specified region should be invalidated
     virtual void InvalidateRegion(DAddr addr, u64 size,

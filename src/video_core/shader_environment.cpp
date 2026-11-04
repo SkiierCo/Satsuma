@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <cstring>
 #include <string>
+#include <string_view>
 #include <fstream>
 #include <memory>
 #include <optional>
@@ -425,6 +426,22 @@ private:
     GPUVAddr page_end{};
 };
 
+// Yoshi's gameplay programs read zeros up to a page boundary (and a blanket flush wrote zeros
+// over good menu code): log which cache holds such a program's pages. Capped, failures only.
+void ReportNativeCodeCaches(const Tegra::MemoryManager& gpu_memory, GPUVAddr program,
+                            std::size_t size, std::string_view reason) {
+    static std::atomic<u32> reports{};
+    static const u32 limit = [] {
+        const char* value = std::getenv("EDEN_NX2_SHADER_PROBE");
+        return value ? static_cast<u32>(std::strtoul(value, nullptr, 0)) : 32U;
+    }();
+    if (reports.fetch_add(1, std::memory_order_relaxed) >= limit) {
+        return;
+    }
+    LOG_WARNING(HW_GPU, "Native program {:#x} {}; its pages:{}", program, reason,
+                gpu_memory.DescribeCachedRegion(program, (std::max<std::size_t>)(size, 0x10)));
+}
+
 } // Anonymous namespace
 
 // A native program is captured and lowered once, when the shader cache first meets it. The
@@ -473,6 +490,9 @@ std::shared_ptr<const LoweredNativeCode> GenericEnvironment::LowerNativeCode(u32
         native.push_back(instruction);
         const auto status = capture.Observe(instruction, index);
         if (status == Shader::Ampere::ProgramCaptureState::Result::InvalidTarget) {
+            ReportNativeCodeCaches(*gpu_memory, program_base,
+                                   native_header_size + native.size() * sizeof(Instruction),
+                                   "branches outside its capture");
             if (const char* dir = std::getenv("EDEN_NX2_SHADER_DUMP")) {
                 const auto path = fmt::format("{}/rejected-{:x}.bin", dir, program_base + native_header_size);
                 if (std::FILE* file = std::fopen(path.c_str(), "wb")) {
@@ -486,6 +506,12 @@ std::shared_ptr<const LoweredNativeCode> GenericEnvironment::LowerNativeCode(u32
                                        instruction.words[2], instruction.words[3]);
         }
         if (status == Shader::Ampere::ProgramCaptureState::Result::Complete) break;
+    }
+    if (!native.empty() && native.front().words[0] == 0 && native.front().words[1] == 0 &&
+        native.front().words[2] == 0 && native.front().words[3] == 0) {
+        ReportNativeCodeCaches(*gpu_memory, program_base,
+                               native_header_size + native.size() * sizeof(Instruction),
+                               "starts with a zero instruction");
     }
     std::vector<u32> verified_traps;
     for (u32 index = 0; index < native.size(); ++index)

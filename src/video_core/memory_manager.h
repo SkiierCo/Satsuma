@@ -10,6 +10,7 @@
 #include <map>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <vector>
 #include <boost/container/small_vector.hpp>
 
@@ -68,6 +69,10 @@ public:
     [[nodiscard]] std::optional<DAddr> GpuToCpuAddress(GPUVAddr addr) const;
 
     [[nodiscard]] std::optional<DAddr> GpuToCpuAddress(GPUVAddr addr, std::size_t size) const;
+
+    /// Diagnostics: per 4 KiB page of the range, its device address, whether it has memory, and
+    /// which GPU caches hold it.
+    [[nodiscard]] std::string DescribeCachedRegion(GPUVAddr addr, std::size_t size) const;
 
     template <typename T>
     [[nodiscard]] T Read(GPUVAddr addr) const;

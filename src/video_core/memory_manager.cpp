@@ -465,6 +465,39 @@ void MemoryManager::ReadBlockImpl(GPUVAddr gpu_src_addr, void* dest_buffer, std:
     MemoryOperation(gpu_src_addr, size, true, mapped_big, set_to_zero, read_short_pages);
 }
 
+std::string MemoryManager::DescribeCachedRegion(GPUVAddr addr, std::size_t size) const {
+    constexpr GPUVAddr probe_page = 0x1000;
+    std::string out;
+    const GPUVAddr end = addr + size;
+    for (GPUVAddr page = addr & ~(probe_page - 1); page < end; page += probe_page) {
+        const GPUVAddr begin = (std::max)(page, addr);
+        const GPUVAddr length = (std::min)(page + probe_page, end) - begin;
+        out += fmt::format("\n  {:#x}+{:#x}:", begin, length);
+        const auto device = GpuToCpuAddress(begin);
+        if (!device) {
+            out += " unmapped";
+            continue;
+        }
+        out += fmt::format(" dev {:#x}", *device);
+        if (begin + length > g_nx2_sparse_low.load(std::memory_order_relaxed) &&
+            begin < g_nx2_sparse_high.load(std::memory_order_relaxed)) {
+            out += " in-sparse-span";
+        }
+        const u8* physical = memory.GetPointer<u8>(*device);
+        if (!physical) {
+            out += " no-memory";
+        } else {
+            const bool zero = std::all_of(physical, physical + length,
+                                          [](u8 value) { return value == 0; });
+            out += zero ? " zero" : " data";
+        }
+        if (rasterizer) {
+            out += rasterizer->DescribeCachedRegion(*device, length);
+        }
+    }
+    return out;
+}
+
 void MemoryManager::ReadBlock(GPUVAddr gpu_src_addr, void* dest_buffer, std::size_t size, VideoCommon::CacheType which) const {
     ReadBlockImpl(gpu_src_addr, dest_buffer, size, which, false);
 }
