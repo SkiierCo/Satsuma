@@ -568,6 +568,27 @@ void DmaPusher::RecordCapture(const char* phase, std::span<const CommandHeader> 
 }
 
 size_t DmaPusher::ProcessCommands(std::span<const CommandHeader> commands, size_t word_offset) {
+    const size_t done = ProcessCommandsImpl(commands, word_offset);
+    return done;
+}
+
+size_t DmaPusher::ProcessCommandsImpl(std::span<const CommandHeader> commands, size_t word_offset) {
+    auto& record = process_records[process_record_count++ % process_records.size()];
+    record = ProcessRecord{
+        .entry = dma_state.dma_get,
+        .size = static_cast<u32>(word_offset + commands.size()),
+        .offset = static_cast<u32>(word_offset),
+        .words = 0,
+        .method = dma_state.method,
+        .count_before = dma_state.method_count,
+        .count_after = 0,
+        .subindex = static_cast<u32>(dma_pushbuffer_subindex),
+    };
+    const auto finish = [&](size_t done) {
+        record.words = static_cast<u32>(done);
+        record.count_after = dma_state.method_count;
+        return done;
+    };
     RecordCapture("execute-begin", commands, word_offset);
     for (size_t index = 0; index < commands.size();) {
 #ifdef ARCHITECTURE_x86_64
@@ -628,11 +649,11 @@ size_t DmaPusher::ProcessCommands(std::span<const CommandHeader> commands, size_
         }
         if (puller.HasPendingAcquire()) {
             RecordCapture("execute-suspend", {}, word_offset + index);
-            return index;
+            return finish(index);
         }
     }
     RecordCapture("execute-end", {}, word_offset + commands.size());
-    return commands.size();
+    return finish(commands.size());
 }
 
 // NVN on Switch 2 ends GPFIFO entries in the middle of a method's data and calls another command
@@ -985,6 +1006,14 @@ void DmaPusher::ReportDesync(const char* reason) {
               begin, end, fmt::join(processed, " "),
               fmt::join(std::span{now}.subspan(begin, end - begin), " "),
               memory_manager.DescribeCachedRegion(report_entry_address, size_t{report_entry_words} * 4));
+    for (u32 i = 0; i < process_records.size() && i < process_record_count; ++i) {
+        const auto& r = process_records[(process_record_count - 1 - i) % process_records.size()];
+        LOG_ERROR(HW_GPU,
+                  "  run -{}: entry {} at {:#x} ({} words), from word {} for {} words; method {:#x}, "
+                  "pending {} -> {}",
+                  i, r.subindex, r.entry, r.size, r.offset, r.words, r.method, r.count_before,
+                  r.count_after);
+    }
 }
 
 void DmaPusher::ReportUnboundSubchannel() {

@@ -177,6 +177,7 @@ private:
     /// Returns how many words were processed: fewer than given when a semaphore acquire
     /// suspended the channel.
     size_t ProcessCommands(std::span<const CommandHeader> commands, size_t word_offset = 0);
+    size_t ProcessCommandsImpl(std::span<const CommandHeader> commands, size_t word_offset);
     size_t command_resume_offset{}; ///< Words of the current entry done before a suspension
 
     void SetState(const CommandHeader& command_header);
@@ -218,6 +219,20 @@ public:
     GPUVAddr report_entry_address{};
     u32 report_entry_words{};
     const char* report_entry_source{"none"};
+    /// The last runs of ProcessCommands (entry, start offset, pending method count before and
+    /// after), printed by ReportDesync.
+    struct ProcessRecord {
+        GPUVAddr entry;
+        u32 size;
+        u32 offset;
+        u32 words;
+        u32 method;
+        u32 count_before;
+        u32 count_after;
+        u32 subindex;
+    };
+    std::array<ProcessRecord, 8> process_records{};
+    u32 process_record_count{};
 
     std::queue<CommandList> dma_pushbuffer; ///< Queue of command lists to be processed
     std::size_t dma_pushbuffer_subindex{};  ///< Index within a command list within the pushbuffer
