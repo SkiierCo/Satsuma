@@ -181,7 +181,9 @@ void nvhost_as_gpu::Nx2Map(u64 gpu_address, u64 cpu_address, u64 size) {
                  gpu_address, cpu_address, device_address, size, heap);
     }
     nx2_gpu_views.Map(gpu_address, cpu_address, size);
-    system.GPU().RunInOrder([gmmu = gmmu.get(), gpu_address, device_address, size] {
+    // Before the command lists submitted after it are read: the game maps memory and submits
+    // lists stored there right away.
+    system.GPU().MapInOrder([gmmu = gmmu.get(), gpu_address, device_address, size] {
         gmmu->Map(gpu_address, device_address, size, Tegra::PTEKind::PITCH, false);
     });
     LOG_DEBUG(Service_NVDRV, "Switch 2 GPU mapping {:#x}+{:#x} -> CPU {:#x}", gpu_address, size,

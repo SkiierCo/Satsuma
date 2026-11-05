@@ -6,6 +6,16 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-05
 
+- **Mario Kart World: command-stream desync (Build 73).** With the GPU split, the front thread
+  parses command lists as they arrive, while GPU memory maps (`nx2:gpu` 211, sub 101) were
+  deferred to the back thread. A list the game mapped and submitted right away could be read
+  through the address's previous mapping: in the Build 72 crash, a 12-word entry at
+  `0x11a71a01ec` held half-float vertex data (`bd8abd56 bc17bbe3 ...`), its first word was
+  parsed as a header with a count in the thousands, and the parser ran on into unbound
+  subchannels and garbage state. Every bad entry so far sat at a remapped address (`0x119...`,
+  `0x11a...`), never at the game's own (`0x21...`). Maps now run before the lists submitted
+  after them are read, as in Lichii build 75 (`MapInOrder`). `EDEN_NX2_MAP_BEFORE_READS=0`
+  turns this off for A/B runs. Needs testing.
 - **Mario Kart World: sparse texture tiles (`nx2:gpu` 216), from Lichii build 75.** Fil's run
   logged six "pool exhausted" warnings and an unlit, black 3D scene while the sky and karts
   rendered. The game keeps its world textures in 25 sparse regions (about 20 GiB reserved) and

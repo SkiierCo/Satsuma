@@ -5,6 +5,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <chrono>
+#include <cstdlib>
 #include <thread>
 
 #include "common/assert.h"
@@ -101,7 +102,20 @@ void ThreadManager::StartThread(VideoCore::RendererBase& renderer, Core::Fronten
                 } else if (std::holds_alternative<GPUTickCommand>(next.data)) {
                     split.Defer([gpu = &system.GPU()] { gpu->TickWork(); });
                 } else if (auto* run = std::get_if<RunCommand>(&next.data)) {
+                    // Maps run on the back (they unmap caches, the back's state), but the front
+                    // parses the next lists through the GPU page table: it waits for the map.
+                    // Read through the old mapping, a list mapped just before its submission was
+                    // whatever memory the address showed before (Mario Kart World's desync).
+                    // EDEN_NX2_MAP_BEFORE_READS=0 leaves maps on the back alone (A/B runs).
+                    static const bool map_before_reads = [] {
+                        const char* value = std::getenv("EDEN_NX2_MAP_BEFORE_READS");
+                        return value == nullptr || value[0] != '0';
+                    }();
+                    const bool before_later_reads = map_before_reads && run->before_later_reads;
                     split.DeferFunction(std::move(run->func));
+                    if (before_later_reads) {
+                        split.Drain();
+                    }
                 } else if (const auto* flush = std::get_if<FlushRegionCommand>(&next.data)) {
                     split.Defer([rasterizer_ptr, addr = flush->addr, size = flush->size] {
                         rasterizer_ptr->FlushRegion(addr, size);
@@ -163,8 +177,8 @@ void ThreadManager::TickGPU(bool is_async) {
     PushCommand(GPUTickCommand(), false, is_async);
 }
 
-void ThreadManager::Run(std::function<void()>&& func, bool is_async) {
-    PushCommand(RunCommand{std::move(func)}, false, is_async);
+void ThreadManager::Run(std::function<void()>&& func, bool is_async, bool before_later_reads) {
+    PushCommand(RunCommand{std::move(func), before_later_reads}, false, is_async);
 }
 
 void ThreadManager::InvalidateRegion(DAddr addr, u64 size) {

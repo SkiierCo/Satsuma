@@ -43,6 +43,15 @@ regions were left out, as those regions keep their own memory. The game still cr
 an unbound subchannel at 69.4 s, then invalid Fermi2D registers, syncpoint ID 0x500 and an
 image of garbage size. That is the command-stream desync.
 
+**Command-stream desync.** The parser itself doesn't slip: entries hold the wrong memory. In
+the Build 72 crash the implausible header came from entry 1023 at `0x11a71a01ec` (12 words),
+whose memory held half-float vertex data, and the 2026-11-04 crash7 entry at `0x11a00e62c4`
+held random data too. Both are at addresses the game maps its memory to with `nx2:gpu` 211
+(not at its own addresses, `0x21...`). With the GPU split those maps ran on the back thread,
+after the front had already parsed lists submitted behind them, through the old mapping. Build
+73 makes the front wait for each map before it reads later lists (`MapInOrder`, from Lichii
+build 75; `EDEN_NX2_MAP_BEFORE_READS=0` turns it off).
+
 ## Next
 
-- The command-stream desync (crash at 70 s on Build 72, 169 s on 2026-11-03).
+- Run Build 73: the desync report ("Command stream desync" in the log) should not appear.
