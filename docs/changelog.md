@@ -4,6 +4,23 @@ Changes since the Satsuma v1 source snapshot, newest first. Each entry names the
 was found in; "needs testing" means it builds and passes the tests but has not been tried
 in that game yet. The commit history has the full detail.
 
+## 2026-11-05
+
+- **Ocarina of Time ("Green Hat") fixes and new shader support, from Lichii build 75.**
+  - Boot: GPU report timestamps on Switch 2 are global-clock nanoseconds, not Maxwell GPU
+    ticks, so the game's CPU/GPU time calibration holds. The kernel's address arbiter gains
+    `WaitIfEqual64` (64-bit wait-on-address).
+  - Shaders: SPIR-V global atomic max; out-of-range signed SHR fills with the input's sign;
+    `CALL.REL.NOINC` callees are captured; register pressure covers more opcodes. Lowered:
+    `SHF.R.U64` and `USHF.R.U64` funnel shifts, `RED` with a type on a uniform address,
+    `UFLO`/`UBREV`/`UPOPC` on any uniform register, signed `REDUX` min/max, predicated
+    uniform compares, `SEL` with a uniform operand (`0xc07`), `0x4a4`, the packed
+    float-to-byte conversion (`0x243`) and the `HFMA2` H0_NH1 swap.
+  - Native compute storage buffers use their pointer only (the next word is not a size) and
+    stop where the mapping does. `EDEN_NX2_REJECT_HASH` rejects a native shader by key or hash.
+  Not taken: Lichii's frame-dump tool hooks, and lowering paths Satsuma doesn't have
+  (`ISETP.EX` rework, the written-register count, F2I negate). Needs testing.
+
 ## 2026-11-04 (third round)
 
 - **Cyberpunk 2077: register-handle surface atomics** (`0x394`, as `0x593` with the handle

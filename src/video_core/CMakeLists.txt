@@ -98,6 +98,7 @@ add_library(video_core STATIC
     gpu.cpp
     native_qmd.cpp
     gpu.h
+    gpu_timestamp.h
     gpu_split.cpp
     gpu_split.h
     gpu_thread.cpp

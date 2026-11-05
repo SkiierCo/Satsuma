@@ -1058,30 +1058,39 @@ void EmitContext::DefineGlobalMemoryFunctions(const IR::Program& program) {
     // Global atomic adds left global (several candidate buffers, or none mapped when the pipeline
     // was built): resolved among the bound buffers like loads and stores. Bananza's append
     // counters, Kirby's compute. From Lichii build 70.
-    if (!std::ranges::any_of(program.blocks, [](const IR::Block* block) {
-            return std::ranges::any_of(block->Instructions(), [](const IR::Inst& inst) {
-                return inst.GetOpcode() == IR::Opcode::GlobalAtomicIAdd32;
-            });
-        })) {
-        return;
-    }
+    // Global atomic max as well (from Lichii's Ocarina of Time fixes).
     if (!std::ranges::any_of(info.storage_buffers_descriptors, [&](const auto& descriptor) {
             return info.native_global_bounds || Backend::UsesNvnStorageDescriptor(info, descriptor);
         })) {
         return;
     }
-    const Id function_type{TypeFunction(U32[1], U64, U32[1])};
-    atomic_add_global_func_u32 =
-        OpFunction(U32[1], spv::FunctionControlMask::MaskNone, function_type);
-    const Id address{OpFunctionParameter(U64)};
-    const Id value{OpFunctionParameter(U32[1])};
-    const Id scope{Const(static_cast<u32>(spv::Scope::Device))};
-    define_body(&StorageDefinitions::U32, address, storage_types.U32.element, 2,
-                [&](Id pointer) {
-                    OpReturnValue(OpAtomicIAdd(U32[1], pointer, scope, u32_zero_value, value));
+    for (const auto opcode : {IR::Opcode::GlobalAtomicIAdd32, IR::Opcode::GlobalAtomicUMax32}) {
+        if (!std::ranges::any_of(program.blocks, [opcode](const IR::Block* block) {
+                return std::ranges::any_of(block->Instructions(), [opcode](const IR::Inst& inst) {
+                    return inst.GetOpcode() == opcode;
                 });
-    OpReturnValue(u32_zero_value);
-    OpFunctionEnd();
+            })) {
+            continue;
+        }
+        const Id function_type{TypeFunction(U32[1], U64, U32[1])};
+        const Id function{OpFunction(U32[1], spv::FunctionControlMask::MaskNone, function_type)};
+        if (opcode == IR::Opcode::GlobalAtomicIAdd32) {
+            atomic_add_global_func_u32 = function;
+        } else {
+            atomic_umax_global_func_u32 = function;
+        }
+        const Id address{OpFunctionParameter(U64)};
+        const Id value{OpFunctionParameter(U32[1])};
+        const Id scope{Const(static_cast<u32>(spv::Scope::Device))};
+        define_body(&StorageDefinitions::U32, address, storage_types.U32.element, 2,
+                    [&](Id pointer) {
+                        OpReturnValue(opcode == IR::Opcode::GlobalAtomicIAdd32
+                                          ? OpAtomicIAdd(U32[1], pointer, scope, u32_zero_value, value)
+                                          : OpAtomicUMax(U32[1], pointer, scope, u32_zero_value, value));
+                    });
+        OpReturnValue(u32_zero_value);
+        OpFunctionEnd();
+    }
 }
 
 void EmitContext::DefineRescalingInput(const Info& info) {

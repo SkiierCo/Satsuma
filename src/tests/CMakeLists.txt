@@ -61,6 +61,7 @@ add_executable(tests
     video_core/blit_dither.cpp
     video_core/ampere_bindless_surfaces.cpp
     video_core/ampere_tld_handle.cpp
+    video_core/gpu_timestamp.cpp
     video_core/native_texture_header_index.cpp
     video_core/global_address_tracking.cpp
     video_core/storage_buffer_pointer_tracking.cpp
