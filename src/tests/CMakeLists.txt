@@ -20,6 +20,7 @@ add_executable(tests
     common/unique_function.cpp
     core/core_timing.cpp
     core/savestate.cpp
+    core/savestate_components.cpp
     core/savestate_kernel_handles.cpp
     core/savestate_service_sessions.cpp
     core/address_space.cpp

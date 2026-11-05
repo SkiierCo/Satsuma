@@ -7,6 +7,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <functional>
 #include <list>
 #include <memory>
@@ -277,6 +278,20 @@ public:
 
     bool IsShuttingDown() const;
 
+    // Save states: while set, user threads stop at SVC and guest-instruction boundaries
+    // (SuspendType::Checkpoint). Change it only under the scheduler lock; see
+    // core/savestate/checkpoint.h.
+    bool IsCheckpointRequested() const {
+        return m_checkpoint_requested.load(std::memory_order_acquire);
+    }
+    void SetCheckpointRequested(bool requested) {
+        m_checkpoint_requested.store(requested, std::memory_order_release);
+    }
+
+    /// Save states: the next ID CreateNewThreadID returns, and a way to move it past restored IDs.
+    u64 PeekNextThreadID() const;
+    void EnsureNextThreadIDAbove(u64 id);
+
     /// Workaround for single-core mode when preempting threads while idle.
     bool IsPhantomModeForSingleCore() const;
     void SetIsPhantomModeForSingleCore(bool value);
@@ -329,6 +344,7 @@ private:
     std::unique_ptr<Impl> impl;
 
     bool exception_exited{};
+    std::atomic<bool> m_checkpoint_requested{};
 
 private:
     /// Helper to encapsulate all slab heaps in a single heap allocated container

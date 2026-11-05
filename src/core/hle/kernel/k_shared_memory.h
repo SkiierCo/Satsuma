@@ -17,12 +17,18 @@
 #include "core/hle/kernel/slab_helpers.h"
 #include "core/hle/result.h"
 
+namespace Core::SaveState {
+class KernelAccess;
+}
+
 namespace Kernel {
 
 class KernelCore;
 
 class KSharedMemory final
     : public KAutoObjectWithSlabHeapAndContainer<KSharedMemory, KAutoObjectWithList> {
+    friend class ::Core::SaveState::KernelAccess;
+
     KERNEL_AUTOOBJECT_TRAITS(KSharedMemory, KAutoObject);
 
 public:

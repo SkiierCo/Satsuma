@@ -18,9 +18,15 @@ namespace Core {
 class System;
 }
 
+namespace Core::SaveState {
+class KernelAccess;
+}
+
 namespace Kernel {
 
 class KConditionVariable {
+    friend class ::Core::SaveState::KernelAccess;
+
 public:
     using ThreadTree = typename KThread::ConditionVariableThreadTreeType;
 

@@ -23,6 +23,10 @@
 #include "core/hle/result.h"
 #include "core/memory.h"
 
+namespace Core::SaveState {
+class KernelAccess;
+}
+
 namespace Kernel {
 
 enum class DisableMergeAttribute : u8 {
@@ -53,6 +57,8 @@ class KResourceLimit;
 class KSystemResource;
 
 class KPageTableBase {
+    friend class ::Core::SaveState::KernelAccess;
+
     YUZU_NON_COPYABLE(KPageTableBase);
     YUZU_NON_MOVEABLE(KPageTableBase);
 
@@ -557,6 +563,12 @@ public:
     Result MapPages(KProcessAddress address, size_t num_pages, KMemoryState state,
                     KMemoryPermission perm);
     Result UnmapPages(KProcessAddress address, size_t num_pages, KMemoryState state);
+
+    // Save states: maps free pages at a fixed address, using phys_addr when is_pa_valid or
+    // newly allocated pages otherwise.
+    Result MapPagesAtForRestore(KProcessAddress address, size_t num_pages,
+                                KPhysicalAddress phys_addr, bool is_pa_valid, KMemoryState state,
+                                KMemoryPermission perm);
 
     Result MapPageGroup(KProcessAddress* out_addr, const KPageGroup& pg,
                         KProcessAddress region_start, size_t region_num_pages, KMemoryState state,

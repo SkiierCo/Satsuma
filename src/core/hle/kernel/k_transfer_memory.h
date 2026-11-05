@@ -20,6 +20,10 @@ namespace Core::Memory {
 class Memory;
 }
 
+namespace Core::SaveState {
+class KernelAccess;
+}
+
 namespace Kernel {
 
 class KernelCore;
@@ -27,6 +31,8 @@ class KProcess;
 
 class KTransferMemory final
     : public KAutoObjectWithSlabHeapAndContainer<KTransferMemory, KAutoObjectWithList> {
+    friend class ::Core::SaveState::KernelAccess;
+
     KERNEL_AUTOOBJECT_TRAITS(KTransferMemory, KAutoObject);
 
 public:

@@ -18,6 +18,10 @@
 #include "core/hle/kernel/svc_types.h"
 #include "core/hle/result.h"
 
+namespace Core::SaveState {
+class KernelAccess;
+}
+
 namespace Kernel {
 
 enum class CodeMemoryOperation : u32 {
@@ -29,6 +33,8 @@ enum class CodeMemoryOperation : u32 {
 
 class KCodeMemory final
     : public KAutoObjectWithSlabHeapAndContainer<KCodeMemory, KAutoObjectWithList> {
+    friend class ::Core::SaveState::KernelAccess;
+
     KERNEL_AUTOOBJECT_TRAITS(KCodeMemory, KAutoObject);
 
 public:

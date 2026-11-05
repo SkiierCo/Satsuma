@@ -19,12 +19,22 @@ add_library(core STATIC
     core.h
     savestate/archive.cpp
     savestate/archive.h
+    savestate/checkpoint.cpp
+    savestate/checkpoint.h
     savestate/cpu.cpp
     savestate/cpu.h
+    savestate/kernel_access.cpp
+    savestate/kernel_access.h
     savestate/kernel_handles.cpp
     savestate/kernel_handles.h
+    savestate/kernel_state.cpp
+    savestate/kernel_state.h
+    savestate/memory.cpp
+    savestate/memory.h
+    savestate/objects.h
     savestate/service_sessions.cpp
     savestate/service_sessions.h
+    savestate/stream.h
     game_settings.cpp
     game_settings.h
     core_timing.cpp

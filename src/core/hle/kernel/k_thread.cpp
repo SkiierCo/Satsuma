@@ -67,6 +67,9 @@ static void ResetThreadContext64(Kernel::Svc::ThreadContext& ctx, u64 stack_top,
 } // namespace
 
 namespace Kernel {
+
+    thread_local KProcessAddress KThread::s_restore_tls_address{};
+
     namespace {
 
         struct ThreadLocalRegion {
@@ -224,7 +227,12 @@ namespace Kernel {
         // Set parent, if relevant.
         if (owner != nullptr) {
             // Setup the TLS, if needed.
-            if (type == ThreadType::User) {
+            if (type == ThreadType::User && s_restore_tls_address != 0) {
+                // Save state restore: the slot was reserved with the saved TLS pages and its
+                // contents are restored with guest memory.
+                m_tls_address = s_restore_tls_address;
+                s_restore_tls_address = 0;
+            } else if (type == ThreadType::User) {
                 R_TRY(owner->CreateThreadLocalRegion(kernel, std::addressof(m_tls_address)));
                 owner->GetMemory().ZeroBlock(m_tls_address, Svc::ThreadLocalRegionSize);
             }

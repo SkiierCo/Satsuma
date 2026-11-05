@@ -22,6 +22,10 @@
 #include "core/hle/kernel/k_thread_local_page.h"
 #include "core/memory.h"
 
+namespace Core::SaveState {
+class KernelAccess;
+}
+
 namespace Kernel {
 
 enum class DebugWatchpointType : u8 {
@@ -39,6 +43,14 @@ struct DebugWatchpoint {
 };
 
 class KProcess final : public KAutoObjectWithSlabHeapAndContainer<KProcess, KWorkerTask> {
+    friend class ::Core::SaveState::KernelAccess;
+
+public:
+    // Save state restore: when nonzero, LoadFromMetadata places the code at this address.
+    static inline u64 s_restore_code_address{};
+
+private:
+
     KERNEL_AUTOOBJECT_TRAITS(KProcess, KSynchronizationObject);
 
 public:

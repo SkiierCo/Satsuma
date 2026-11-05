@@ -12,6 +12,7 @@
 #include "core/core.h"
 #include "core/debugger/debugger.h"
 #include "core/hle/kernel/k_process.h"
+#include "core/hle/kernel/k_scheduler.h"
 #include "core/hle/kernel/k_thread.h"
 #include "core/hle/kernel/kernel.h"
 #include "core/hle/kernel/physical_core.h"
@@ -77,6 +78,16 @@ void PhysicalCore::RunThread(KernelCore& kernel, Kernel::KThread* thread) {
         // If the thread is scheduled for termination, exit.
         if (thread->HasDpc() && thread->IsTerminationRequested()) {
             thread->Exit(kernel);
+        }
+
+        // Save states: stop at this guest instruction boundary until the checkpoint ends.
+        if (kernel.IsCheckpointRequested()) {
+            KScopedSchedulerLock sl{kernel};
+            if (kernel.IsCheckpointRequested()) {
+                thread->SetCheckpointGate(KThread::CheckpointGate::Guest);
+                thread->RequestSuspend(kernel, SuspendType::Checkpoint);
+                return;
+            }
         }
 
         // Notify the debugger and go to sleep if a step was performed

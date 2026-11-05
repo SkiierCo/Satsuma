@@ -11,12 +11,18 @@
 #include "core/hle/kernel/slab_helpers.h"
 #include "core/hle/result.h"
 
+namespace Core::SaveState {
+class KernelAccess;
+}
+
 namespace Kernel {
 
 class KernelCore;
 class KEvent;
 
 class KReadableEvent : public KSynchronizationObject {
+    friend class ::Core::SaveState::KernelAccess;
+
     KERNEL_AUTOOBJECT_TRAITS(KReadableEvent, KSynchronizationObject);
 
 public:

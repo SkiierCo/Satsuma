@@ -1036,6 +1036,16 @@ u64 KernelCore::CreateNewThreadID() {
     return impl->next_thread_id++;
 }
 
+u64 KernelCore::PeekNextThreadID() const {
+    return impl->next_thread_id.load();
+}
+
+void KernelCore::EnsureNextThreadIDAbove(u64 id) {
+    u64 next = impl->next_thread_id.load();
+    while (next <= id && !impl->next_thread_id.compare_exchange_weak(next, id + 1)) {
+    }
+}
+
 u64 KernelCore::CreateNewKernelProcessID() {
     return impl->next_kernel_process_id++;
 }

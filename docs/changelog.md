@@ -6,6 +6,11 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-05
 
+- **Save states: groundwork, not usable yet.** Fil asked for save states (all games, slots 1-4,
+  F7 save, F8 load) to skip Ocarina of Time's unskippable cutscene. Added so far: a checkpoint
+  that stops every game thread at an SVC or instruction boundary, and capture/restore code for
+  the address space and for threads, events, transfer memory and handles. Services, GPU, audio,
+  the restore boot and the menu items are still missing; see `docs/savestates.md`. No new build.
 - **Ocarina of Time: native storage pointers for its compute (Build 80).** Build 79 ran the UP2
   compute, and gameplay runs a bit smoother (Fil), but the scenes stay washed out white. The log
   shows three compute pipelines failing: "Storage buffer failed to track", then "Global atomic add

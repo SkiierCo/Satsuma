@@ -43,6 +43,10 @@ class Memory;
 class System;
 } // namespace Core
 
+namespace Core::SaveState {
+class KernelAccess;
+}
+
 namespace Kernel {
 
 class GlobalSchedulerContext;
@@ -69,6 +73,7 @@ enum class SuspendType : u32 {
     Backtrace = 3,
     Init = 4,
     System = 5,
+    Checkpoint = 6,
 
     Count,
 };
@@ -88,8 +93,9 @@ enum class ThreadState : u16 {
     BacktraceSuspended = (1 << (3 + SuspendShift)),
     InitSuspended = (1 << (4 + SuspendShift)),
     SystemSuspended = (1 << (5 + SuspendShift)),
+    CheckpointSuspended = (1 << (6 + SuspendShift)),
 
-    SuspendFlagMask = ((1 << 6) - 1) << SuspendShift,
+    SuspendFlagMask = ((1 << 7) - 1) << SuspendShift,
 };
 DECLARE_ENUM_FLAG_OPERATORS(ThreadState);
 
@@ -131,6 +137,8 @@ Core::Memory::Memory& GetCurrentMemory(KernelCore& kernel);
 class KThread final : public KAutoObjectWithSlabHeapAndContainer<KThread, KWorkerTask>,
                       public Common::IntrusiveListBaseNode<KThread>,
                       public KTimerTask {
+    friend class ::Core::SaveState::KernelAccess;
+
     KERNEL_AUTOOBJECT_TRAITS(KThread, KSynchronizationObject);
 
 private:
@@ -578,6 +586,32 @@ public:
         return m_thread_type;
     }
 
+    // Save states. The SVC this thread is executing (NoSvc outside one), where it stopped for a
+    // checkpoint, and whether its interrupted SVC must run again from the svc instruction.
+    static constexpr u32 NoSvc = ~0U;
+    enum class CheckpointGate : u8 { None, BeforeSvc, AfterSvc, Guest };
+    u32 GetCurrentSvc() const {
+        return m_current_svc;
+    }
+    void SetCurrentSvc(u32 svc) {
+        m_current_svc = svc;
+    }
+    CheckpointGate GetCheckpointGate() const {
+        return m_checkpoint_gate;
+    }
+    void SetCheckpointGate(CheckpointGate gate) {
+        m_checkpoint_gate = gate;
+    }
+    bool IsCheckpointRestart() const {
+        return m_checkpoint_restart;
+    }
+    void SetCheckpointRestart(bool restart) {
+        m_checkpoint_restart = restart;
+    }
+    KThreadQueue* GetWaitQueue() const {
+        return m_wait_queue;
+    }
+
     bool IsDummyThread() const {
         return this->GetThreadType() == ThreadType::Dummy;
     }
@@ -936,6 +970,12 @@ private:
     uintptr_t m_argument{};
     KProcessAddress m_stack_top{};
     NativeExecutionParameters m_native_execution_parameters{};
+    // Save states: when nonzero, the next user thread initialized on this host thread uses
+    // this already reserved TLS slot instead of allocating one.
+    static thread_local KProcessAddress s_restore_tls_address;
+    u32 m_current_svc{NoSvc};
+    CheckpointGate m_checkpoint_gate{CheckpointGate::None};
+    bool m_checkpoint_restart{};
 
 public:
     using ConditionVariableThreadTreeType = ConditionVariableThreadTree;

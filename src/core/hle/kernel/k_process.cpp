@@ -1239,6 +1239,11 @@ Result KProcess::LoadFromMetadata(KernelCore& kernel, const FileSys::ProgramMeta
         break;
     }
 
+    // Save state restore: load the code where the saved process had it.
+    if (s_restore_code_address != 0) {
+        code_address = s_restore_code_address - GetInteger(aslr_space_start);
+    }
+
     Svc::CreateProcessParameter params{
         .name = {},
         .version = {},

@@ -17,11 +17,17 @@ namespace Core {
 class System;
 }
 
+namespace Core::SaveState {
+class KernelAccess;
+}
+
 namespace Kernel {
 
 class KernelCore;
 
 class KAddressArbiter {
+    friend class ::Core::SaveState::KernelAccess;
+
 public:
     using ThreadTree = KConditionVariable::ThreadTree;
 

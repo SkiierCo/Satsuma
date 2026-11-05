@@ -13,6 +13,7 @@
 #include "core/arm/arm_interface.h"
 #include "core/core.h"
 #include "core/hle/kernel/k_process.h"
+#include "core/hle/kernel/k_scheduler.h"
 #include "core/hle/kernel/svc.h"
 
 namespace Kernel::Svc {
@@ -2498,9 +2499,51 @@ static void Call64(Core::System& system, u32 imm, std::span<uint64_t, 8> args) {
     default: UNREACHABLE_MSG("Unhandled SVC {:#x}!", imm);
     }
 }
+namespace {
+
+// Save states: move the current thread's PC back to its svc instruction, so the SVC runs again
+// when the thread resumes or is restored.
+void RewindSvcInstruction(KernelCore& kernel, KProcess& process) {
+    auto* const iface = process.GetArmInterface(kernel.CurrentPhysicalCoreIndex());
+    ThreadContext ctx{};
+    iface->GetContext(ctx);
+    if (process.Is64Bit()) {
+        ctx.pc -= 4;
+    } else {
+        ctx.pc -= (ctx.pstate & 0x20) != 0 ? 2 : 4; // Thumb svc is 2 bytes.
+    }
+    iface->SetContext(ctx);
+}
+
+// Stops the current thread until the checkpoint ends (KernelCore::checkpoint_requested). Checked
+// under the scheduler lock, so it cannot race Core::SaveState::Checkpoint::Release. With rewind,
+// the svc instruction runs again when the thread resumes. Returns false without a checkpoint.
+bool StopAtCheckpoint(KernelCore& kernel, KProcess& process, KThread::CheckpointGate gate,
+                      bool rewind) {
+    KScopedSchedulerLock sl{kernel};
+    if (!kernel.IsCheckpointRequested()) {
+        return false;
+    }
+    if (rewind) {
+        RewindSvcInstruction(kernel, process);
+    }
+    auto& thread = GetCurrentThread(kernel);
+    thread.SetCheckpointGate(gate);
+    thread.RequestSuspend(kernel, SuspendType::Checkpoint);
+    return true;
+}
+
+} // namespace
+
 void Call(Core::System& system, u32 imm) {
     auto& kernel = system.Kernel();
     auto& process = GetCurrentProcess(kernel);
+    if (kernel.IsCheckpointRequested() &&
+        StopAtCheckpoint(kernel, process, KThread::CheckpointGate::BeforeSvc, true)) {
+        // Do not start a new SVC during a checkpoint; it runs after the checkpoint instead.
+        return;
+    }
+    GetCurrentThread(kernel).SetCurrentSvc(imm);
     std::array<uint64_t, 8> args;
     kernel.CurrentPhysicalCore().SaveSvcArguments(process, args);
     //kernel.EnterSVCProfile();
@@ -2562,7 +2605,21 @@ void Call(Core::System& system, u32 imm) {
                  GetArg64(args, 2));
     }
     //kernel.ExitSVCProfile();
+    auto& thread = GetCurrentThread(kernel);
+    thread.SetCurrentSvc(KThread::NoSvc);
+    if (thread.IsCheckpointRestart()) {
+        // A checkpoint cancelled this SVC's wait (Core::SaveState::Checkpoint). Its results
+        // are discarded and it runs again from the svc instruction.
+        thread.SetCheckpointRestart(false);
+        if (!StopAtCheckpoint(kernel, process, KThread::CheckpointGate::BeforeSvc, true)) {
+            RewindSvcInstruction(kernel, process);
+        }
+        return;
+    }
     kernel.CurrentPhysicalCore().LoadSvcArguments(process, args);
+    if (kernel.IsCheckpointRequested()) {
+        StopAtCheckpoint(kernel, process, KThread::CheckpointGate::AfterSvc, false);
+    }
 }
 
 } // namespace Kernel::Svc

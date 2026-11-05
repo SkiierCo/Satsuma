@@ -18,6 +18,10 @@
 #include "core/hle/kernel/slab_helpers.h"
 #include "core/hle/result.h"
 
+namespace Core::SaveState {
+class KernelAccess;
+}
+
 namespace Kernel {
 
 class KernelCore;
@@ -25,6 +29,8 @@ class KProcess;
 
 class KThreadLocalPage final : public Common::IntrusiveRedBlackTreeBaseNode<KThreadLocalPage>,
                                public KSlabAllocated<KThreadLocalPage> {
+    friend class ::Core::SaveState::KernelAccess;
+
 public:
     static constexpr size_t RegionsPerPage = PageSize / Svc::ThreadLocalRegionSize;
     static_assert(RegionsPerPage > 0);
