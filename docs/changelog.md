@@ -13,7 +13,10 @@ in that game yet. The commit history has the full detail.
   game's files. `EDEN_NX2_EDITION_DLC=0` turns it off. First test (Fil): no DLC. Wonder's
   Switch 2 Edition program keeps the Switch 1 NPDM layout and compression, so nothing in its
   files says Switch 2 and the layering never ran. `EDEN_NX2_EDITION_DLC_<program ID>=1` now
-  names such a game; the shipped switches name Wonder. Needs testing.
+  names such a game. Tested on Wonder (Fil): it crashed about 2 s in. Satsuma runs Wonder's
+  Switch 1 program (Switch 1 GPU and controller paths), which can't use the Switch 2 Edition
+  files, so the Wonder line was removed. Bellabel Park needs the Switch 2 program, which the
+  dump's update does not contain in a recognisable form.
 - **Per-game display rate.** `EDEN_NX2_VSYNC_HZ_<program ID>` overrides `EDEN_NX2_VSYNC_HZ`
   for one game. The shipped switches cap Super Mario Bros. Wonder at 67 under the 120 Hz
   default (Fil's request).
