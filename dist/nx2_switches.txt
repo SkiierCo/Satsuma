@@ -55,6 +55,10 @@ EDEN_NX2_DMA_SCATTER=0
 # captures on NVIDIA. For capture runs only.
 #EDEN_NX2_DESCRIPTOR_BUFFER=0
 
+# Macro parameters in an entry of their own are flushed from the caches only on pages GPU work has
+# written; =2 waits for the split's back and checks every such entry, as before.
+#EDEN_NX2_PBFLUSH=2
+
 # Per game: EDEN_NX2_VSYNC_HZ_<program ID> overrides EDEN_NX2_VSYNC_HZ for that game.
 # Super Mario Bros. Wonder capped at 67.
 EDEN_NX2_VSYNC_HZ_010015100B514000=67

@@ -6,6 +6,23 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-05
 
+- **Mario Kart World: 30 FPS, the split threads take turns (Build 76).** The game asks for 60 FPS
+  and Satsuma accepts 60 presents a second, but the host finishes about 30 frames. Fil's profile
+  run: each second the split's front thread waited about 450 ms for its back thread (some 8,000
+  times) and the back waited 180-330 ms for the front, so the two mostly took turns. Build 76:
+  - The profiler now logs where the front waits for the back ("waits for the back:" with time and
+    count per site: ring full, list writers, list flush, macro parameters, macro DMA read, puller,
+    GP sync fence, CPU read, map, front start).
+  - Macro parameters continued in an entry of their own (Mario Kart World does this) are flushed
+    from the caches only when their pages were written by GPU work; before, the front waited for
+    the back at every such entry. `EDEN_NX2_PBFLUSH=2` restores that.
+  Needs testing.
+- **Mario Kart World: the blue circle around the drift sparks.** From Fil's RenderDoc capture: it
+  is the game's glow sprite (a 128x128 radial falloff) drawn additively at each exhaust, with its
+  soft-particle depth fade working as the shader intends (fade 0.27, alpha 0.16 at the halo).
+  Its colour is multiplied by about 4 from the game's per-frame constants (3.999, which looks
+  like a ceiling). Not fixed yet; the next lead is where the game gets that value (possibly an
+  exposure value it reads back from the GPU).
 - **Frame captures replay again (Build 75).** RenderDoc couldn't replay Fil's Mario Kart World
   captures (`VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS`): Satsuma's descriptor buffers need buffer
   device addresses, which RenderDoc fails to restore on NVIDIA. `EDEN_NX2_DESCRIPTOR_BUFFER=0`

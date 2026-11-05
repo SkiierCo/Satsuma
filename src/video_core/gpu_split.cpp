@@ -172,7 +172,11 @@ void GpuSplit::WaitForSpace(size_t words) {
     }
     Publish();
     Nx2Profile::Scope scope{Nx2Profile::Zone::SplitDrain};
+    const u64 start = Nx2Profile::Enabled() ? Nx2Profile::Now() : 0;
     WaitForBack(4096, [&] { return write_position + words - consumed_cache <= RingWords; });
+    if (Nx2Profile::Enabled()) {
+        Nx2Profile::AddDrain(Nx2Profile::DrainSite::RingFull, Nx2Profile::Now() - start);
+    }
 }
 
 template <typename Done>
@@ -214,14 +218,18 @@ void GpuSplit::Publish() {
     }
 }
 
-void GpuSplit::Drain() {
+void GpuSplit::Drain(Nx2Profile::DrainSite site) {
     consumed_cache = consumed.load(std::memory_order_acquire);
     if (consumed_cache == write_position) {
         return;
     }
     Publish();
     Nx2Profile::Scope scope{Nx2Profile::Zone::SplitDrain};
+    const u64 start = Nx2Profile::Enabled() ? Nx2Profile::Now() : 0;
     WaitForBack(16384, [&] { return consumed_cache == write_position; });
+    if (Nx2Profile::Enabled()) {
+        Nx2Profile::AddDrain(site, Nx2Profile::Now() - start);
+    }
     publish_every = 8;
 }
 
@@ -234,7 +242,11 @@ void GpuSplit::WaitForWriters() {
     wait_target.store(target, std::memory_order_seq_cst);
     Publish();
     Nx2Profile::Scope scope{Nx2Profile::Zone::SplitDrain};
+    const u64 start = Nx2Profile::Enabled() ? Nx2Profile::Now() : 0;
     WaitForBack(16384, [&] { return consumed_cache >= target; });
+    if (Nx2Profile::Enabled()) {
+        Nx2Profile::AddDrain(Nx2Profile::DrainSite::ListWriters, Nx2Profile::Now() - start);
+    }
     wait_target.store(~u64{0}, std::memory_order_relaxed);
 }
 

@@ -77,7 +77,31 @@ inline u64 Now() {
     return static_cast<u64>(Common::g_wall_clock.GetTimeNS().count());
 }
 
+/// Why the split's front waited for its back (counted per site while profiling).
+enum class DrainSite : u32 {
+    Other,
+    RingFull,        ///< The ring to the back is full: the back is behind
+    ListWriters,     ///< GPU-written command lists: the dispatches and copies sent before them
+    ListFlush,       ///< Command lists on GPU-written pages: drain and flush the pages
+    MacroParameters, ///< Macro parameters in an entry of their own (EDEN_NX2_PBFLUSH)
+    MacroDmaRead,    ///< The front's macros read memory (MME DMA)
+    Puller,          ///< Semaphore acquires, releases and fences the puller needs the back for
+    GpSyncFence,     ///< A GP entry's sync bit (sync_memory_operations)
+    CpuRead,         ///< The CPU reads memory the GPU wrote
+    Map,             ///< GPU memory maps before later command reads
+    FrontStart,      ///< The front takes an engine's macros over
+    FrontVerify,     ///< EDEN_NX2_FRONT_VERIFY
+    Count,
+};
+
+inline constexpr std::array<const char*, static_cast<size_t>(DrainSite::Count)> drain_site_names{
+    "other", "ring full", "list writers", "list flush", "macro parameters", "macro dma read",
+    "puller", "gp sync fence", "cpu read", "map", "front start", "front verify",
+};
+
 struct ThreadData {
+    std::array<u64, static_cast<size_t>(DrainSite::Count)> drain_ns{};
+    std::array<u64, static_cast<size_t>(DrainSite::Count)> drain_count{};
     std::array<u64, static_cast<size_t>(Zone::Count)> exclusive_ns{};
     std::array<u64, static_cast<size_t>(Zone::Count)> count{};
     std::array<u64, 8> counters{}; ///< See Counter
@@ -139,6 +163,14 @@ inline std::unordered_set<u64>& DmaReadPages() {
     return pages;
 }
 
+/// The front waited `ns` for the back at `site`.
+inline void AddDrain(DrainSite site, u64 ns) {
+    if (Enabled()) {
+        t_data.drain_ns[static_cast<size_t>(site)] += ns;
+        ++t_data.drain_count[static_cast<size_t>(site)];
+    }
+}
+
 inline void Add(Counter counter, u64 amount) {
     if (Enabled()) {
         t_data.counters[static_cast<size_t>(counter)] += amount;
@@ -190,6 +222,19 @@ inline void Report(const char* thread_name = "GPU thread") {
     line += fmt::format(" | acquires {:.0f} ({:.0f} waited)",
                         static_cast<double>(data.counters[6]) * 1e9 / window,
                         static_cast<double>(data.counters[7]) * 1e9 / window);
+    std::string waits;
+    for (size_t i = 0; i < data.drain_ns.size(); ++i) {
+        if (data.drain_count[i] == 0) {
+            continue;
+        }
+        waits += fmt::format("{} {} {:.1f} ms ({:.0f}/s)", waits.empty() ? "" : ",",
+                             drain_site_names[i],
+                             static_cast<double>(data.drain_ns[i]) * 1000.0 / window,
+                             static_cast<double>(data.drain_count[i]) * 1e9 / window);
+    }
+    if (!waits.empty()) {
+        line += " | waits for the back:" + waits;
+    }
     LOG_INFO(HW_GPU, "{} per second:{}", thread_name, line);
     data = {};
     data.window_start = now;

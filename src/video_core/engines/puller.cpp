@@ -56,7 +56,7 @@ void OnBack(const Func& func) {
 }
 
 void DrainBack() {
-    VideoCommon::GpuSplit::Get().Drain();
+    VideoCommon::GpuSplit::Get().Drain(VideoCommon::Nx2Profile::DrainSite::Puller);
 }
 
 } // Anonymous namespace

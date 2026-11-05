@@ -66,6 +66,17 @@ still reaches the CPU address's current memory (a warning is logged when it does
 **Build 74 test (Fil).** No crash in over 21 minutes, no desync report and no stale-range
 warning: releasing destroyed memory's ranges was enough. Graphics good, 30 FPS.
 
+**Blue circle around the drift sparks (2026-11-05 capture).** RenderDoc pixel history on the
+halo: draws 14256 and 14188 (an additive glow, `SrcAlpha + One`, 128x128 BC4 radial sprite plus
+the scene depth for a soft-particle fade). The shader's own values at the halo: sprite 0.61,
+fade 0.27 (scene 3.82 m, glow 3.39 m), alpha 0.164, colour (0.09, 1.09, 2.0) x 3.999 from the
+per-frame constants `c15[8..10]` = (3.999, -0.00145, 0.0375). The draw does what its shader
+says; the brightness factor is the suspect.
+
+**Frame rate (Build 75 profile).** Front thread per second: ~450 ms waiting for the back (~8,000
+waits), ~200-300 ms idle, ~290 ms of work. Back: ~600 ms of work, 180-330 ms waiting for the
+front. Build 76 logs the waits per site.
+
 ## Next
 
 - A blue circle around the drift sparks (the console shows only the sparks).

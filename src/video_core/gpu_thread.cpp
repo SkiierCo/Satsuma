@@ -114,7 +114,7 @@ void ThreadManager::StartThread(VideoCore::RendererBase& renderer, Core::Fronten
                     const bool before_later_reads = map_before_reads && run->before_later_reads;
                     split.DeferFunction(std::move(run->func));
                     if (before_later_reads) {
-                        split.Drain();
+                        split.Drain(VideoCommon::Nx2Profile::DrainSite::Map);
                     }
                 } else if (const auto* flush = std::get_if<FlushRegionCommand>(&next.data)) {
                     split.Defer([rasterizer_ptr, addr = flush->addr, size = flush->size] {

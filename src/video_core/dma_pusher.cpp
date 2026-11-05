@@ -398,14 +398,21 @@ bool DmaPusher::Step() {
                 // into a 5-word indirect draw record and the colour pass draws with it). Read
                 // without a flush, the macro sees the older guest words (a zero count, so the
                 // terrain is never drawn). EDEN_NX2_PBFLUSH=0 turns this off.
-                static const bool flush_parameters = [] {
+                // Only words on pages GPU work has written can be newer in the caches: the others
+                // are read without waiting for the split's back (Mario Kart World continues macro
+                // parameters in entries of their own, and its front spent about half of each
+                // second waiting for the back). EDEN_NX2_PBFLUSH=2 waits for all of them.
+                static const char flush_mode = [] {
                     const char* value = std::getenv("EDEN_NX2_PBFLUSH");
-                    return value == nullptr || value[0] != '0';
+                    return value == nullptr ? '1' : value[0];
                 }();
+                const bool flush_parameters = flush_mode != '0';
                 bool flushed_parameters = false;
-                if (flush_parameters && words <= 64) {
+                if (flush_parameters && words <= 64 &&
+                    (flush_mode == '2' ||
+                     IsGpuWrittenCommands(dma_state.dma_get, words * sizeof(u32)))) {
                     if (auto& split = VideoCommon::GpuSplit::Get(); split.Active()) {
-                        split.Drain();
+                        split.Drain(VideoCommon::Nx2Profile::DrainSite::MacroParameters);
                     }
                     const GPUVAddr address = dma_state.dma_get;
                     const size_t bytes = words * sizeof(u32);
@@ -521,7 +528,7 @@ bool DmaPusher::Step() {
     }
 
     if (signal_sync) {
-        VideoCommon::GpuSplit::Get().Drain();
+        VideoCommon::GpuSplit::Get().Drain(VideoCommon::Nx2Profile::DrainSite::GpSyncFence);
         rasterizer->SignalFence([this]() {
             std::scoped_lock lk(sync_mutex);
             synced = true;
@@ -967,7 +974,7 @@ void DmaPusher::FlushGpuWrittenCommands(GPUVAddr address, size_t size) {
     // The caches belong to the split's back: it first runs what the front queued (the dispatch
     // that writes these words among it). The whole pages are flushed: their next lists read
     // guest memory until GPU work writes them again.
-    VideoCommon::GpuSplit::Get().Drain();
+    VideoCommon::GpuSplit::Get().Drain(VideoCommon::Nx2Profile::DrainSite::ListFlush);
     const GPUVAddr first_page = address & ~GPUVAddr{0xfff};
     const GPUVAddr end_page = (address + size + 0xfff) & ~GPUVAddr{0xfff};
     if (memory_manager.IsMemoryDirty(first_page, end_page - first_page,
