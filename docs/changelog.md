@@ -20,6 +20,11 @@ in that game yet. The commit history has the full detail.
     stop where the mapping does. `EDEN_NX2_REJECT_HASH` rejects a native shader by key or hash.
   Not taken: Lichii's frame-dump tool hooks, and lowering paths Satsuma doesn't have
   (`ISETP.EX` rework, the written-register count, F2I negate). Needs testing.
+- **Mario Kart World and Switch Sports regressed with that port** (Fil): frame rate about
+  halved, many models black, distant scenery low resolution. Two of its runtime changes are now
+  off by default behind switches: GPU report timestamps in nanoseconds
+  (`EDEN_NX2_GPU_TIME_NS=1`) and native compute storage buffers bound from their pointer alone,
+  up to 8 MiB (`EDEN_NX2_SSBO_POINTER_ONLY=1`). The shader changes stay. Needs testing.
 
 ## 2026-11-04 (third round)
 

@@ -4,6 +4,7 @@
 // SPDX-FileCopyrightText: Copyright 2018 yuzu Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <cstdlib>
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -158,7 +159,14 @@ struct GPU::Impl {
     }
 
     [[nodiscard]] u64 GetTicks() const {
-        return ReadGpuTimestamp(system.CoreTiming(), g_nx2_ampere.load(std::memory_order_relaxed),
+        // EDEN_NX2_GPU_TIME_NS=1: Switch 2 report timestamps in nanoseconds (Lichii build 75). Off
+        // by default: Mario Kart World and Switch Sports dropped their resolution with it.
+        static const bool nanoseconds = [] {
+            const char* value = std::getenv("EDEN_NX2_GPU_TIME_NS");
+            return value != nullptr && value[0] == '1';
+        }();
+        return ReadGpuTimestamp(system.CoreTiming(),
+                                nanoseconds && g_nx2_ampere.load(std::memory_order_relaxed),
                                 Settings::values.gpu_clock.GetValue());
     }
 

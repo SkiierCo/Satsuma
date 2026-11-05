@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <cstdlib>
 #include <algorithm>
 #include <memory>
 #include <numeric>
@@ -24,6 +25,18 @@
 #include "video_core/texture_cache/util.h"
 
 namespace VideoCommon {
+
+// EDEN_NX2_SSBO_POINTER_ONLY=1: native compute storage buffers take their pointer alone, up to
+// 8 MiB (Lichii build 75). Off by default: Mario Kart World and Switch Sports slowed down and
+// drew models black with it.
+inline bool NativeStorageBufferPointerOnly() {
+    static const bool enabled = [] {
+        const char* value = std::getenv("EDEN_NX2_SSBO_POINTER_ONLY");
+        return value != nullptr && value[0] == '1';
+    }();
+    return enabled;
+}
+
 
 using Core::DEVICE_PAGESIZE;
 
@@ -601,7 +614,8 @@ void BufferCache<P>::BindComputeStorageBuffer(size_t ssbo_index, u32 cbuf_index,
     const auto& cbufs = launch_desc.const_buffer_config;
     const GPUVAddr ssbo_addr = cbufs[cbuf_index].Address() + cbuf_offset;
     channel_state->compute_storage_buffers[ssbo_index] =
-        StorageBufferBinding(ssbo_addr, cbuf_index, is_written, kepler_compute->IsNativeMode());
+        StorageBufferBinding(ssbo_addr, cbuf_index, is_written,
+                             NativeStorageBufferPointerOnly() && kepler_compute->IsNativeMode());
 }
 
 template <class P>
