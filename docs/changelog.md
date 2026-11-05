@@ -16,7 +16,9 @@ in that game yet. The commit history has the full detail.
   - Macro parameters continued in an entry of their own (Mario Kart World does this) are flushed
     from the caches only when their pages were written by GPU work; before, the front waited for
     the back at every such entry. `EDEN_NX2_PBFLUSH=2` restores that.
-  Needs testing.
+  Tested (Fil, profile run): still 30 FPS. The front still waits 340-500 ms a second: puller
+  (semaphores, fences) 150-210 ms at 2,200-3,500 waits, macro parameters 133-214 ms at
+  1,000-1,900 (these pages really are GPU-written), macro DMA reads 45-75 ms.
 - **Mario Kart World: the blue circle around the drift sparks.** From Fil's RenderDoc capture: it
   is the game's glow sprite (a 128x128 radial falloff) drawn additively at each exhaust, with its
   soft-particle depth fade working as the shader intends (fade 0.27, alpha 0.16 at the halo).

@@ -75,7 +75,9 @@ says; the brightness factor is the suspect.
 
 **Frame rate (Build 75 profile).** Front thread per second: ~450 ms waiting for the back (~8,000
 waits), ~200-300 ms idle, ~290 ms of work. Back: ~600 ms of work, 180-330 ms waiting for the
-front. Build 76 logs the waits per site.
+front. Build 76 logs the waits per site. Build 76 profile (Fil): per second the front waits for
+the puller 150-210 ms (2,200-3,500 times), macro parameters on GPU-written pages 133-214 ms
+(1,000-1,900), macro DMA reads 45-75 ms; still 30 FPS. These two are next.
 
 ## Next
 
