@@ -4,6 +4,10 @@
 #include <array>
 #include <span>
 #include <vector>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <string>
 #include <catch2/catch_test_macros.hpp>
 
 #include "shader_recompiler/backend/spirv/emit_spirv.h"
@@ -238,6 +242,14 @@ TEST_CASE("Mesh programs output points and lines as well as triangles", "[spirv]
         auto registers = MeshRegisters;
         registers[0] = (registers[0] & ~0xfU) | topology;
         const auto spirv = Emit(Shader::Stage::Mesh, code, registers);
+        // SATSUMA_MESH_SPV=<folder>: keep the modules for spirv-val.
+        if (const char* folder = std::getenv("SATSUMA_MESH_SPV")) {
+            std::ofstream file{std::filesystem::path{folder} /
+                                   ("mesh-topology-" + std::to_string(topology) + ".spv"),
+                               std::ios::binary};
+            file.write(reinterpret_cast<const char*>(spirv.data()),
+                       static_cast<std::streamsize>(spirv.size() * sizeof(u32)));
+        }
         CHECK(has_mode(spirv, mode));
         CHECK(CountOp(spirv, OpSetMeshOutputsEXT) == 1);
     }
