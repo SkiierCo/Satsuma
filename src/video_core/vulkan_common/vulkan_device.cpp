@@ -1383,8 +1383,14 @@ void Device::RemoveUnsuitableExtensions() {
     RemoveExtensionFeatureIfUnsuitable(extensions.depth_clip_control, features.depth_clip_control,
                                        VK_EXT_DEPTH_CLIP_CONTROL_EXTENSION_NAME);
 
-    // VK_EXT_descriptor_buffer
-    extensions.descriptor_buffer = features.descriptor_buffer.descriptorBuffer;
+    // VK_EXT_descriptor_buffer. EDEN_NX2_DESCRIPTOR_BUFFER=0 uses descriptor sets instead, and with
+    // that no buffer device addresses, which RenderDoc fails to replay on NVIDIA (frame captures).
+    static const bool descriptor_buffer_allowed = [] {
+        const char* value = std::getenv("EDEN_NX2_DESCRIPTOR_BUFFER");
+        return value == nullptr || value[0] != '0';
+    }();
+    extensions.descriptor_buffer =
+        descriptor_buffer_allowed && features.descriptor_buffer.descriptorBuffer;
     RemoveExtensionFeatureIfUnsuitable(extensions.descriptor_buffer, features.descriptor_buffer,
                                        VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME);
 

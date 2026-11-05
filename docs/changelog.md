@@ -6,6 +6,12 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-05
 
+- **Frame captures replay again (Build 75).** RenderDoc couldn't replay Fil's Mario Kart World
+  captures (`VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS`): Satsuma's descriptor buffers need buffer
+  device addresses, which RenderDoc fails to restore on NVIDIA. `EDEN_NX2_DESCRIPTOR_BUFFER=0`
+  uses descriptor sets instead; "Capture Mario Kart drift.cmd" sets it, skips RenderDoc's API
+  validation (these frames are ~19 GB before compression) and moves the frames into its capture
+  folder.
 - **Mario Kart World: command-stream desync, the stale device ranges (Build 74).** Fil's
   Build 73 run: the terrain started glitching, then the game crashed at 121 s. The mapping
   history in that desync report shows the cause: the game created GPU memory at `0x11be802000`

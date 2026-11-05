@@ -51,6 +51,10 @@ EDEN_NX2_DMA_SCATTER=0
 # are read (Mario Kart World's command-stream desync); =0 doesn't wait, as before.
 #EDEN_NX2_MAP_BEFORE_READS=0
 
+# =0: no Vulkan descriptor buffers (descriptor sets instead), so RenderDoc can replay frame
+# captures on NVIDIA. For capture runs only.
+#EDEN_NX2_DESCRIPTOR_BUFFER=0
+
 # Per game: EDEN_NX2_VSYNC_HZ_<program ID> overrides EDEN_NX2_VSYNC_HZ for that game.
 # Super Mario Bros. Wonder capped at 67.
 EDEN_NX2_VSYNC_HZ_010015100B514000=67
