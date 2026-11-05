@@ -602,6 +602,13 @@ private:
                     m_sparse_regions.emplace(start, SparseRegion{size, ++m_sparse_generation});
                     Tegra::Nx2SparseRegionCreated(start, size, SparseBlockSize);
                     Tegra::Nx2AddSparseSpan(start, size);
+                    if (!sparse_flag) {
+                        // Not a sparse resource: images there hold whatever the GPU puts in them,
+                        // including copies the texture cache never sees as writes (Mario Kart
+                        // World's streamed textures went black and lost their detail levels).
+                        // Only the memory comes on demand.
+                        Tegra::Nx2SparseMarkWritten(start, size);
+                    }
                     LOG_INFO(Service, "nx2:gpu 214 {} region [{:#x}, {:#x}] backed as the GPU writes it",
                              sparse_flag ? "sparse" : "GPU-only", start, last);
                 }

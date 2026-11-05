@@ -25,6 +25,12 @@ in that game yet. The commit history has the full detail.
   off by default behind switches: GPU report timestamps in nanoseconds
   (`EDEN_NX2_GPU_TIME_NS=1`) and native compute storage buffers bound from their pointer alone,
   up to 8 MiB (`EDEN_NX2_SSBO_POINTER_ONLY=1`). The shader changes stay. Needs testing.
+  Tested (Fil): Switch Sports is fine again; Mario Kart World was still broken.
+- **Mario Kart World: black models and blocky distance.** Its 63 GPU-only regions (about
+  3 GiB) are now backed on demand, and the texture cache took images over blocks nobody had
+  written as all zeros. Textures the GPU copies in there never counted as written, so they
+  came out black or with only their smallest detail levels. GPU-only regions now count as
+  written from the start (only their memory still comes on demand). Needs testing.
 
 ## 2026-11-04 (third round)
 
