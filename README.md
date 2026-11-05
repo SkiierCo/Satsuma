@@ -27,6 +27,11 @@ See the [compatibility list](docs/compatibility.md) for each game's status and t
 Satsuma does not include keys, firmware or games. You need to dump them from your
 own console.
 
+## Download
+
+Portable Windows builds are on the [releases page](https://github.com/SkiierCo/Satsuma/releases).
+Extract the zip and run `satsuma.exe`; the `user` folder next to it keeps settings and saves.
+
 ## Switch 2 Editions of Switch 1 games
 
 There is no separate Switch 2 Edition program in releases of Switch 1 games labelled
