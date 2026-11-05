@@ -180,7 +180,12 @@ FileSys::VirtualFile LayerSwitch2EditionDlc(Core::System& system,
         return value == nullptr || value[0] != '0';
     }();
     const u64 title_id = metadata.GetTitleID();
-    if (!enabled || !metadata.IsSwitch2() || (title_id >> 56) != 0x01) {
+    // Super Mario Bros. Wonder's Switch 2 Edition program keeps the Switch 1 NPDM layout and
+    // compression, so nothing in its files says Switch 2: EDEN_NX2_EDITION_DLC_<program ID>=1
+    // names such a game.
+    const auto per_game = std::getenv(fmt::format("EDEN_NX2_EDITION_DLC_{:016X}", title_id).c_str());
+    const bool named = per_game != nullptr && per_game[0] == '1';
+    if (!enabled || (title_id >> 56) != 0x01 || (!metadata.IsSwitch2() && !named)) {
         return romfs;
     }
     const auto& disabled = Settings::values.disabled_addons[title_id];
@@ -425,7 +430,8 @@ AppLoader_DeconstructedRomDirectory::LoadResult AppLoader_DeconstructedRomDirect
     }
     metadata.Print();
 
-    // A Switch 2 Edition of a Switch 1 game (Switch 1 program ID, Switch 2 program): its upgrade
+    // A Switch 2 Edition of a Switch 1 game (Switch 1 program ID, Switch 2 program or named by a
+    // per-game switch): its upgrade
     // DLC holds files laid out like the game's own (Super Mario Bros. Wonder's Meetup in
     // Bellabel Park), and the game only mounts its RomFS, never the add-on content, so the DLC
     // goes over the game's files. EDEN_NX2_EDITION_DLC=0 leaves them as they are.

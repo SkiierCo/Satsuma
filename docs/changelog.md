@@ -10,7 +10,10 @@ in that game yet. The commit history has the full detail.
   Edition DLC (Meetup in Bellabel Park) holds files laid out like the game's own, and the game
   only mounts its RomFS, never the add-on content, so it never saw the DLC. When a Switch 1
   game runs a Switch 2 program, its installed DLC (NAND or registered) now goes over the
-  game's files. `EDEN_NX2_EDITION_DLC=0` turns it off. Needs testing in Wonder.
+  game's files. `EDEN_NX2_EDITION_DLC=0` turns it off. First test (Fil): no DLC. Wonder's
+  Switch 2 Edition program keeps the Switch 1 NPDM layout and compression, so nothing in its
+  files says Switch 2 and the layering never ran. `EDEN_NX2_EDITION_DLC_<program ID>=1` now
+  names such a game; the shipped switches name Wonder. Needs testing.
 - **Per-game display rate.** `EDEN_NX2_VSYNC_HZ_<program ID>` overrides `EDEN_NX2_VSYNC_HZ`
   for one game. The shipped switches cap Super Mario Bros. Wonder at 67 under the 120 Hz
   default (Fil's request).
