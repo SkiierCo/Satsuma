@@ -52,6 +52,18 @@ after the front had already parsed lists submitted behind them, through the old 
 73 makes the front wait for each map before it reads later lists (`MapInOrder`, from Lichii
 build 75; `EDEN_NX2_MAP_BEFORE_READS=0` turns it off).
 
+**Build 73 test (Fil).** The terrain started glitching, then the game crashed at 121 s with the
+desync. This time the bad entry was the reported one, so its mapping history was in the log:
+memory at `0x11be802000` (0x556000 bytes) was mapped, unmapped, replaced by a 0x1546000-byte
+memory, unmapped again, and 0.58 s before the crash a 2-page memory at `0x11bea8b000` was
+mapped through the first memory's device range. Destroyed memory never released its device
+ranges, and a device range keeps the pages its memory had when it was mapped, so the new
+memory showed old pages (command words read as vertex data). The same stale pages would give
+geometry and textures old data, which fits the terrain glitches. Build 74 releases a destroyed
+memory's device ranges once no GPU mapping uses it, and reuses a device range only while it
+still reaches the CPU address's current memory (a warning is logged when it doesn't).
+
 ## Next
 
-- Run Build 73: the desync report ("Command stream desync" in the log) should not appear.
+- Run Build 74: no "Command stream desync" and no terrain glitches; a "no longer reaches its
+  memory, not reused" warning would show the check caught a stale range.

@@ -5,6 +5,7 @@
 // SPDX-FileCopyrightText: 2021 Skyline Team and Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <atomic>
 #include <cstring>
 #include <cstdlib>
 #include <optional>
@@ -15,6 +16,7 @@
 #include "common/common_types.h"
 #include "common/logging.h"
 #include "core/core.h"
+#include "core/memory.h"
 #include "core/hle/service/nvdrv/core/container.h"
 #include "core/hle/service/nvdrv/core/heap_mapper.h"
 #include "core/hle/service/nvdrv/core/nvmap.h"
@@ -143,14 +145,42 @@ void nvhost_as_gpu::Nx2Map(u64 gpu_address, u64 cpu_address, u64 size) {
         return;
     }
     // The same CPU range is often mapped twice (at its own address and in a sparse region), so
-    // reuse its SMMU mapping.
+    // reuse its SMMU mapping, but only while it still reaches the memory the CPU range has now.
+    // The SMMU keeps the pages a range had when it was mapped: Mario Kart World destroys GPU
+    // memory and creates new memory at the same address, and a range kept from the old memory
+    // showed the old pages (command lists read as vertex data, then the stream desynced).
     DAddr device_address{};
     bool heap = false;
+    auto& smmu_pages = system.Host1x().MemoryManager();
+    auto& process_memory = system.ApplicationMemory();
+    const auto same_pages = [&](DAddr device, u64 cpu) {
+        const u8* const device_page = smmu_pages.GetPointer<u8>(device);
+        const u8* const cpu_page = process_memory.GetPointerSilent(Common::ProcessAddress{cpu});
+        // No SMMU page yet: the range's own map is still queued for the GPU thread.
+        return device_page == nullptr || device_page == cpu_page;
+    };
     const auto backing = std::find_if(nx2_device_ranges.begin(), nx2_device_ranges.end(),
                                       [&](const auto& entry) {
         const auto [start, length] = entry.first;
-        return cpu_address >= start && cpu_address - start <= length &&
-               size <= length - (cpu_address - start);
+        if (cpu_address < start || cpu_address - start > length ||
+            size > length - (cpu_address - start)) {
+            return false;
+        }
+        if (entry.second.heap) {
+            return true;
+        }
+        const DAddr device = entry.second.address + (cpu_address - start);
+        const u64 last = (size - 1) & ~u64{0xfff};
+        if (same_pages(device, cpu_address) && same_pages(device + last, cpu_address + last)) {
+            return true;
+        }
+        static std::atomic<u32> stale_logs{};
+        if (stale_logs.fetch_add(1) < 16) {
+            LOG_WARNING(Service_NVDRV, "Switch 2 GPU mapping {:#x}+{:#x}: device range of CPU "
+                                       "{:#x}+{:#x} no longer reaches its memory, not reused",
+                        gpu_address, size, start, length);
+        }
+        return false;
     });
     if (backing != nx2_device_ranges.end()) {
         const auto it = backing;

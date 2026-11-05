@@ -561,7 +561,11 @@ private:
             LOG_DEBUG(Service, "nx2:gpu 102 destroy handle={} [{:#x}, +{:#x}] slot={}", handle,
                       address, size, w[3]);
             if (size != 0) {
-                Nvidia::Devices::Nx2GpuMemoryRegistry::Get().Unmap(address, size);
+                auto& registry = Nvidia::Devices::Nx2GpuMemoryRegistry::Get();
+                registry.Unmap(address, size);
+                // Its device ranges go too, once no GPU mapping uses the memory: kept, a later
+                // memory at this address was mapped through them and showed the old pages.
+                registry.ReleaseBacking(address, size);
             }
             if (size == 0x2000) {
                 Tegra::Nx2RemoveSemaphoreRegion(address);

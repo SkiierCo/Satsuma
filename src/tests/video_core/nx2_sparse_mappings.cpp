@@ -239,3 +239,26 @@ TEST_CASE("Nx2 late listeners replay what is left of partly unmapped tiles", "[n
     Recorder late{late_events};
     CHECK(late_events.empty());
 }
+
+TEST_CASE("Nx2 destroyed memory gives up its device ranges once no mapping uses it",
+          "[nx2_mapping]") {
+    CleanRegistry clean;
+    auto& registry = Nx2GpuMemoryRegistry::Get();
+    std::vector<Event> events;
+    Recorder recorder{events};
+
+    // Sub 101 maps the memory at its own address, 211 elsewhere too.
+    registry.Register(0x11be802000, 0x556000);
+    registry.MapAt(0x11a0000000, 0x11be802000, 0x10000);
+    events.clear();
+
+    // Sub 102: its own mapping goes, the release waits for the 211 mapping.
+    registry.Unmap(0x11be802000, 0x556000);
+    registry.ReleaseBacking(0x11be802000, 0x556000);
+    CHECK(events == std::vector<Event>{{'u', 0x11be802000, 0, 0x556000}});
+
+    events.clear();
+    registry.Unmap(0x11a0000000, 0x10000);
+    CHECK(events == std::vector<Event>{{'u', 0x11a0000000, 0, 0x10000},
+                                       {'r', 0, 0x11be802000, 0x556000}});
+}
