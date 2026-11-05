@@ -5,6 +5,10 @@ test; "needs testing" marks a fix that is in the build but not yet tried in the 
 Results depend on the GPU, driver and settings. They were recorded on Windows with an
 NVIDIA GPU and the Vulkan renderer.
 
+Releases of Switch 1 games labelled "Nintendo Switch 2 Edition" contain only the Switch 1
+game. They launch as the Switch 1 version, without Switch 2 Edition in the game, and their
+Switch 2 Edition DLC can't be used.
+
 | Status | Meaning |
 | --- | --- |
 | Playable | Can be played start to finish with minor issues |

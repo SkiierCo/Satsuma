@@ -27,6 +27,13 @@ See the [compatibility list](docs/compatibility.md) for each game's status and t
 Satsuma does not include keys, firmware or games. You need to dump them from your
 own console.
 
+## Switch 2 Editions of Switch 1 games
+
+There is no separate Switch 2 Edition program in releases of Switch 1 games labelled
+"Nintendo Switch 2 Edition": they contain the Switch 1 game. In Satsuma they launch as the
+Switch 1 version, the game doesn't say Switch 2 Edition, and Switch 2 Edition DLC (such as
+Super Mario Bros. Wonder's Meetup in Bellabel Park) can't be used.
+
 ## Building
 
 Satsuma builds on Windows with Visual Studio 2026 (x64 C++ tools), CMake and Ninja.
