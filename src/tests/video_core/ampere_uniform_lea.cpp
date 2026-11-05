@@ -108,3 +108,21 @@ TEST_CASE("Ampere effective addresses accept a uniform addend", "[video_core][am
 }
 
 } // namespace
+
+TEST_CASE("Ampere uniform add carries into any uniform predicate", "[video_core][ampere]") {
+    // Ocarina of Time: UIADD3 UR6, UP2, UR15, UR6, URZ (0f067290 00000006 0ff5e03f 000fe200).
+    for (const u32 carry_out : {0U, 1U, 2U, 4U, 6U}) {
+        const std::array<Instruction, 2> code{{
+            {{0x0f067290, 6, (0x0ff5e03fU & ~(7U << 17)) | (carry_out << 17), 0x000fe200}},
+            {{0x0000794d, 0, 0x03800000, 0}},
+        }};
+        const auto lowered = LowerToMaxwell(code);
+        REQUIRE(static_cast<bool>(lowered));
+        const u64 mask = 1ULL << (6 - carry_out);
+        // The carry is computed in P(6-n) and merged into R239 bit 6-n, with P(6-n) restored.
+        const u64 merge = 0x38e8000000070000ULL | 239ULL | (239ULL << 8) | (mask << 20);
+        const u64 restore = 0x38f0000000070000ULL | (253ULL << 8) | (mask << 20);
+        REQUIRE(std::count(lowered.instructions.begin(), lowered.instructions.end(), merge) == 1);
+        REQUIRE(std::count(lowered.instructions.begin(), lowered.instructions.end(), restore) == 1);
+    }
+}

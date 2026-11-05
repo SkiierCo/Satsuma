@@ -6,6 +6,13 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-05
 
+- **Ocarina of Time: a compute pass that never ran (Build 79).** With Build 78 the AV1 intro
+  plays (in bands) and 3D scenes render, but washed out white (Fil). The log showed one compute
+  program (code at `0x216c0bd700`, 900 workgroups) rejected on every dispatch: a uniform
+  `UIADD3 UR6, UP2, UR15, UR6, URZ` (`0f067290 00000006 0ff5e03f 000fe200`) whose carry goes to
+  UP2, while the lowering only allowed UP0 and UP1. Any UP0-UP6 now works, the same way ULOP3 and
+  the uniform LEA carry already handle them (computed in P(6-n), kept in R239 bit 6-n). A test
+  covers OoT's instruction with UP0, UP1, UP2, UP4 and UP6. Needs testing.
 - **Ocarina of Time: AV1 movies (Build 78).** Build 77 still showed black 3D scenes. Fil's
   RenderDoc capture of one: 84 events a frame, only UI quads and post-processing, no 3D geometry
   and no compute dispatches; the game's shader cache held just 15 pipelines, and no shader failed.
