@@ -74,3 +74,6 @@ EDEN_NX2_VSYNC_HZ_010015100B514000=67
 # them for:
 EDEN_NX2_GPU_TIME_NS_0400486024DEC000=1
 EDEN_NX2_SSBO_POINTER_ONLY_0400486024DEC000=1
+# Native storage pointer candidates (off by default, they turned Yoshi's main menu green), on for
+# Ocarina of Time: its global atomics need them.
+EDEN_NX2_NATIVE_POINTERS_0400486024DEC000=1

@@ -41,6 +41,7 @@
 #include "video_core/engines/kepler_compute.h"
 #include "video_core/memory_manager.h"
 #include "video_core/shader_environment.h"
+#include "video_core/nx2_game_switch.h"
 #include "video_core/texture_cache/format_lookup_table.h"
 #include "video_core/textures/texture.h"
 
@@ -208,12 +209,11 @@ u32 GenericEnvironment::TranslateProgramAddress(u32 address) const {
 }
 
 bool UseNativePointerCandidates() {
-    // Off by default: it left Yoshi's main menu green (2026-11-03); EDEN_NX2_NATIVE_POINTERS=1.
-    static const bool enabled = [] {
-        const char* value = std::getenv("EDEN_NX2_NATIVE_POINTERS");
-        return value != nullptr && value[0] == '1';
-    }();
-    return enabled;
+    // Off by default: it left Yoshi's main menu green (2026-11-03); EDEN_NX2_NATIVE_POINTERS=1, or
+    // EDEN_NX2_NATIVE_POINTERS_<program ID>=1 for one game. Lichii and Nemyu always use them;
+    // without them Ocarina of Time's global atomics find no storage buffer and its compute fails.
+    static Nx2GameSwitch enabled{"EDEN_NX2_NATIVE_POINTERS"};
+    return enabled.Enabled();
 }
 
 bool GenericEnvironment::IsNativeProgram() const {

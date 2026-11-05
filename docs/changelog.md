@@ -6,6 +6,14 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-05
 
+- **Ocarina of Time: native storage pointers for its compute (Build 80).** Build 79 ran the UP2
+  compute, and gameplay runs a bit smoother (Fil), but the scenes stay washed out white. The log
+  shows three compute pipelines failing: "Storage buffer failed to track", then "Global atomic add
+  with no routable storage buffer", so their dispatches were skipped. Lichii and Nemyu always use
+  native storage pointer candidates for native programs; Satsuma made them opt-in on 2026-11-03
+  (they turned Yoshi's main menu green). `EDEN_NX2_NATIVE_POINTERS` can now be set per game
+  (`EDEN_NX2_NATIVE_POINTERS_<program ID>`), and `nx2_switches.txt` turns it on for Ocarina of
+  Time only. Needs testing.
 - **Ocarina of Time: a compute pass that never ran (Build 79).** With Build 78 the AV1 intro
   plays (in bands) and 3D scenes render, but washed out white (Fil). The log showed one compute
   program (code at `0x216c0bd700`, 900 workgroups) rejected on every dispatch: a uniform
