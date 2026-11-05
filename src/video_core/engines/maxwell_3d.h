@@ -3183,7 +3183,8 @@ public:
     std::span<u32> GetNativeMacroPositions() { return native_macro_context ? std::span<u32>{native_macro_context->positions} : std::span<u32>{macro_positions}; }
 
 
-    // Native inline constants: bank 24 is lowered to the otherwise unbound bank 17.
+    // Native inline constants: eight 256-byte root tables that shaders read as banks 24-31. The
+    // lowering reads them from the otherwise unbound bank 17, table t at byte t * 0x100.
     struct RootTables {
         static constexpr u32 SelectMethod = 0x504 / 4;
         static constexpr u32 LoadMethod = 0x508 / 4;
@@ -3202,6 +3203,13 @@ public:
                 loaded = true;
             }
             offset += 4;
+        }
+        /// The eight tables as bank 17 holds them.
+        std::array<u32, 8 * 64> Flat() const {
+            std::array<u32, 8 * 64> words;
+            for (size_t table = 0; table < tables.size(); ++table)
+                std::copy(tables[table].begin(), tables[table].end(), words.begin() + table * 64);
+            return words;
         }
     } root_tables;
 

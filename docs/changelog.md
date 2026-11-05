@@ -6,6 +6,30 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-05
 
+- **Cyberpunk 2077: compute and vertex shaders that never ran (Build 81).** Fil's Build 79 run
+  still shows the green screen (Bink videos decoded into all-zero Y/Cb/Cr images). The log has
+  two compute pipelines failing with a bare "SPIR-V Instruction is not implemented", three more
+  compute programs and five vertex shaders rejected by the lowering, and 16 compute dispatches
+  skipped. Unimplemented SPIR-V instructions now name themselves. A new offline probe
+  (`tests.exe "[.spirvprobe]"`, `SATSUMA_SPIRV_DUMP=<EDEN_NX2_SHADER_DUMP folder>`) lowers,
+  translates and emits each dumped compute program; on Fil's dump it found the missing one:
+  `LoadGlobalU16`, 16-bit loads through pointers read from memory that stay global. 8- and
+  16-bit global loads now read the containing word through the 32-bit global path (Lichii and
+  Nemyu don't implement them either). Lowering, from the rejected words:
+  - `ULDC.64` from banks 25 and 31 (`00047ab9 06400000 00000a00`, `07c00000`): banks 24-31 are
+    NVN2's eight 256-byte root tables (3D methods 0x504/0x508); only table 0 was readable. All
+    eight are now read from bank 17, table t at byte t * 0x100, and bound there. The first write
+    to each table is logged ("Root table N (bank M) first written").
+  - `REDUX.AND` (`000773c4 ... 00000000`) and `.XOR` (Lichii build 75).
+  - `LDG.E.STRONG.GPU` through a uniform base (`07077981 00000004 081ee900`), fenced with
+    `MEMBAR.GL` as the strong descriptor loads are.
+  - `SURED` with a register handle (`0a0013a0 20000009 0010e004`, opcode 0x3a0), lowered to a
+    bindless Maxwell `SURED`.
+  With these, the probe gets 126 of Cyberpunk's 130 dumped compute programs to SPIR-V (122
+  before). Left: two programs with a global atomic add that has no routable storage buffer,
+  and two rejected later on a global store register form and a shared atomic form. The six
+  graphics pipelines that fail to track a bindless texture loaded from global memory are not
+  addressed yet. Needs testing.
 - **Save states: groundwork, not usable yet.** Fil asked for save states (all games, slots 1-4,
   F7 save, F8 load) to skip Ocarina of Time's unskippable cutscene. Added so far: a checkpoint
   that stops every game thread at an SVC or instruction boundary, and capture/restore code for

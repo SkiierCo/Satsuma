@@ -41,6 +41,24 @@ not yet looked at. No video decoder activity.
   graphics pipelines fail to track a bindless texture handle that the shader loads from global
   memory (`LoadGlobal32`). 18 compute dispatches are skipped as a result.
 
+## 2026-11-05 (Build 79 run, fixes in Build 81)
+
+- The run still shows the green screen. Two compute pipelines failed in the SPIR-V backend, which
+  only said "SPIR-V Instruction"; an offline probe on the shader dump found 16-bit global loads
+  (`LoadGlobalU16`) through pointers read from memory. 8- and 16-bit global loads are now
+  emitted.
+- Five vertex shaders start with `ULDC.64 UR4, c[0x19][0x0]` or `c[0x1f][0x0]` and then load
+  vertex data through that pointer. Banks 24-31 are NVN2's root tables (written with 3D methods
+  0x504/0x508); tables 1-7 are now readable, from bank 17 at table * 0x100. Whether the game
+  writes tables 1 and 7 shows in the log as "Root table N (bank M) first written".
+- Three compute programs were rejected at `REDUX.AND`, `LDG.E.STRONG.GPU` with a uniform base,
+  and `SURED` with a register handle (0x3a0). All three now lower.
+- Offline, 126 of 130 dumped compute programs now reach SPIR-V. Left: a global atomic add with
+  no routable storage buffer (two programs), a global store register form and a shared atomic
+  form.
+
 ## Next
 
-Implement the missing SPIR-V instruction and follow bindless handles loaded from global memory.
+Fil's Build 81 run: check whether the green screen changes, whether root tables 1 and 7 are
+written, and which compute dispatches are still skipped. Then the remaining compute forms and
+the bindless texture handles loaded from global memory (`LoadGlobal32`, six graphics pipelines).

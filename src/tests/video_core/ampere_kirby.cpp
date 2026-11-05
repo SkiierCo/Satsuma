@@ -139,7 +139,8 @@ TEST_CASE("Ampere local vector spills reject misalignment and scratch aliasing",
 
 TEST_CASE("Ampere warp reductions retain their operation and active-lane mask",
           "[video_core][ampere]") {
-    for (const u32 mode : {0xc000U, 0x14000U, 0x4000U}) {
+    // 0 .AND (Cyberpunk 2077), 0x4000 .OR, 0x8000 .XOR, 0xc000 .SUM, 0x14000 .MAX.
+    for (const u32 mode : {0xc000U, 0x14000U, 0x4000U, 0x8000U, 0U}) {
         const std::array<Instruction, 2> code{{
             {{0x030673c4, 0, mode, 0x000ea200}},
             {{0x0000794d, 0, 0x03800000, 0}},
@@ -152,16 +153,21 @@ TEST_CASE("Ampere warp reductions retain their operation and active-lane mask",
         const u64 operation = mode == 0xc000 ? 0x5c10000000070000ULL
                               : mode == 0x14000
                                   ? 0x5c20000000070000ULL | (15ULL << 39)
-                                  : 0x5c40000000070000ULL | (1ULL << 41) | (7ULL << 48);
+                                  : 0x5c40000000070000ULL | (u64{mode >> 14} << 41) | (7ULL << 48);
         const u64 merge = operation | 222ULL | (222ULL << 8) | (251ULL << 20);
         REQUIRE(std::count(lowered.instructions.begin(), lowered.instructions.end(), merge) == 32);
+        // .AND starts from all ones and gives inactive lanes all ones (OR with the inverted mask).
+        const u64 inactive = 0x5c40000000070000ULL | 251ULL | (251ULL << 8) | (252ULL << 20) |
+                             (mode == 0 ? (1ULL << 40) | (1ULL << 41) : 0) | (7ULL << 48);
+        REQUIRE(std::count(lowered.instructions.begin(), lowered.instructions.end(), inactive) == 32);
     }
 }
 
 TEST_CASE("Ampere warp reductions reject unsupported modes and uniform destinations",
           "[video_core][ampere]") {
-    // 0x4200: the signed bit (73) only applies to .MIN/.MAX; signed .MAX (0x14200) is supported.
-    for (const u32 mode : {0U, 0x8000U, 0x4200U}) {
+    // 0x4200/0x200: the signed bit (73) only applies to .MIN/.MAX; signed .MAX (0x14200) is
+    // supported. 0x18000: no such operation.
+    for (const u32 mode : {0x200U, 0x4200U, 0x18000U}) {
         const std::array<Instruction, 2> code{{
             {{0x030673c4, 0, mode, 0x000ea200}},
             {{0x0000794d, 0, 0x03800000, 0}},

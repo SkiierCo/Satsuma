@@ -74,6 +74,7 @@ add_executable(tests
     audio_core/hardware_audio_codec.cpp
     core/system_test_context.h
     video_core/brx_probe.cpp
+    video_core/spirv_probe.cpp
     video_core/ampere_fefw.cpp
     video_core/ampere_fe_pipeline.cpp
     video_core/gpu_split_wait.cpp
@@ -101,6 +102,7 @@ add_executable(tests
     video_core/ampere_yoshi.cpp
     video_core/ampere_release_guards.cpp
     video_core/ampere_release_f2i.cpp
+    video_core/ampere_cyberpunk.cpp
     input_common/calibration_configuration_job.cpp
 )
 

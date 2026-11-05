@@ -362,6 +362,11 @@ void Maxwell3D::ProcessMethodCall(u32 method, u32 argument, u32 nonshadow_argume
         root_tables.Select(argument);
         return;
     case RootTables::LoadMethod:
+        if (static std::array<bool, 8> written{}; !written[root_tables.selected]) {
+            written[root_tables.selected] = true;
+            LOG_INFO(HW_GPU, "Root table {} (bank {}) first written: byte {:#x} = {:#x}",
+                     root_tables.selected, 24 + root_tables.selected, root_tables.offset, argument);
+        }
         root_tables.Load(argument);
         if (std::getenv("EDEN_NX2_IMAGE_TRACE")) {
             static u32 trace_count{};

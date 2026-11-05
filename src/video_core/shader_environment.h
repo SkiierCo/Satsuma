@@ -206,7 +206,7 @@ private:
         /// detached.
         std::vector<Tegra::Texture::TICEntry> texture_pool;
         bool via_header_index{};
-        std::array<u32, 64> native_inline_constants{};
+        std::array<u32, 8 * 64> native_inline_constants{}; ///< Root tables 0-7 (banks 24-31)
         bool has_native_inline_constants{};
 
         u32 viewport_scale_offset_enabled{};

@@ -899,14 +899,17 @@ GraphicsEnvironment::GraphicsEnvironment(Tegra::Engines::Maxwell3D& maxwell3d_,
 u32 GraphicsEnvironment::ReadCbufValue(u32 cbuf_index, u32 cbuf_offset) {
     u32 value{};
     std::span<const u32> inline_constants;
+    std::array<u32, 8 * 64> live_tables;
     if (cbuf_index == 17) {
         if (snapshot && snapshot->has_native_inline_constants) {
             inline_constants = snapshot->native_inline_constants;
         } else if (!snapshot && maxwell3d->GetNativeMacroEngine().native_turing &&
                    maxwell3d->root_tables.loaded) {
             const auto& bound = maxwell3d->state.shader_stages[stage_index].const_buffers[17];
-            if (!bound.enabled || bound.size == 0)
-                inline_constants = maxwell3d->root_tables.tables[0];
+            if (!bound.enabled || bound.size == 0) {
+                live_tables = maxwell3d->root_tables.Flat();
+                inline_constants = live_tables;
+            }
         }
     }
     if (!inline_constants.empty()) {
@@ -1049,7 +1052,7 @@ bool GraphicsEnvironment::Detach() {
     copy.has_native_inline_constants = maxwell3d->GetNativeMacroEngine().native_turing &&
         maxwell3d->root_tables.loaded && (!bank17.enabled || bank17.size == 0);
     if (copy.has_native_inline_constants)
-        copy.native_inline_constants = maxwell3d->root_tables.tables[0];
+        copy.native_inline_constants = maxwell3d->root_tables.Flat();
     copy.viewport_scale_offset_enabled = regs.viewport_scale_offset_enabled;
     if (has_hle_engine_state) {
         copy.replace_table = maxwell3d->replace_table;

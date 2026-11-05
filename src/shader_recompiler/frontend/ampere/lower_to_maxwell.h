@@ -917,20 +917,28 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
         case 0xab9: case 0xabb: { // ULDC U32/U64, direct or indexed.
             const u32 uniform_dest = insn.Bits(16, 8), index_reg = insn.Bits(24, 8);
             const u32 width = insn.Bits(73, 3);
+            // Banks 24-31 are the root tables, read from bank 17 with table t at byte t * 0x100
+            // (bank 24 is table 0, as bank() maps it). Cyberpunk 2077's vertex shaders take a 64-bit
+            // vertex data pointer from banks 25 and 31 with ULDC.64.
+            const u32 raw_bank = insn.Bits(54, 5);
+            const bool root_table = raw_bank >= 24 && insn.Bits(38, 16) < 0x100;
+            const u32 load_bank = root_table ? 17U : bank();
+            const u32 load_offset = insn.Bits(38, 16) + (root_table ? (raw_bank - 24) * 0x100U : 0U);
             const u32 target = uniform_register(uniform_dest);
             const u32 index_target = opcode == 0xabb ? uniform_register(index_reg) : 255U;
             if (target == ~0U || target == 255 || (width != 4 && width != 5) ||
                 (width == 5 && ((uniform_dest & 1) || uniform_register(uniform_dest + 1) != target + 1)) ||
-                bank() >= 18 || insn.Bits(38, 16) % 4 || insn.Bits(62, 2) ||
+                load_bank >= 18 || load_offset % 4 || insn.Bits(62, 2) ||
                 (insn.words[2] & ~0xe00U) != (opcode == 0xab9 ? 0U : 0x08000000U) ||
                 index_target == ~0U)
                 return fail(index, "native uniform constant load mode");
             if (opcode == 0xab9 && width == 4) {
-                emit(0x4c98000000000000ULL | predicate | target | (u64{15} << 39) | cbuf());
+                emit(0x4c98000000000000ULL | predicate | target | (u64{15} << 39) |
+                     (u64{load_offset / 4} << 20) | (u64{load_bank} << 34));
             } else {
                 emit(0xef90000000000000ULL | predicate | target |
-                     (u64{index_target} << 8) | (u64{insn.Bits(38, 16)} << 20) |
-                     (u64{bank()} << 36) | (u64{width} << 48));
+                     (u64{index_target} << 8) | (u64{load_offset} << 20) |
+                     (u64{load_bank} << 36) | (u64{width} << 48));
             }
             break;
         }
@@ -1125,20 +1133,25 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
             restore_predicate();
             break;
         }
-        case 0x3c4: { // REDUX.SUM (modulo 2^32), .MAX.U32, or .OR over the actual active lanes.
+        case 0x3c4: { // REDUX.SUM (modulo 2^32), .MIN/.MAX, .AND, .OR or .XOR over the actual active lanes.
             const u32 source = insn.Bits(24, 8), target = uniform_register(static_cast<u32>(dest));
             // .MIN/.MAX: bit 73 signed, compared as unsigned with the sign bit flipped (Lichii build 75).
             const u32 mode = insn.words[2] & ~0x200U;
             const bool minimum = mode == 0x10000;
             const bool maximum = mode == 0x14000;
             const bool signed_order = insn.Bits(73, 1);
-            const bool bitwise_or = insn.words[2] == 0x4000;
+            // Logical forms (operation field 0 AND, 1 OR, 2 XOR; Maxwell LOP uses the same numbers).
+            // XOR from Lichii build 75; AND (Cyberpunk 2077) starts from and fills inactive lanes
+            // with all ones, like the minimum.
+            const bool bitwise_and = insn.words[2] == 0;
+            const u32 logical = insn.words[2] == 0x4000 ? 1U : insn.words[2] == 0x8000 ? 2U : 0U;
+            const bool ones_identity = minimum || bitwise_and;
             if (target == ~0U || target == 255 || insn.words[1] ||
-                (insn.words[2] != 0xc000 && !minimum && !maximum && !bitwise_or) ||
+                (insn.words[2] != 0xc000 && !minimum && !maximum && !bitwise_and && !logical) ||
                 (signed_order && !maximum && !minimum) || native_predicate != 7)
                 return fail(index, "native warp reduction mode");
             emit(0x50d8000000070000ULL | 250 | (u64{7} << 39) | (u64{7} << 45) | (u64{1} << 48));
-            mov_imm(target, minimum ? ~0U : 0U);
+            mov_imm(target, ones_identity ? ~0U : 0U);
             for (u32 lane = 0; lane < 32; ++lane) {
                 emit(0xef10000000070000ULL | 251 | (u64{source} << 8) | (u64{lane} << 20) |
                     (u64{1} << 28) | (u64{1} << 29) | (u64{31} << 34) | (u64{7} << 48));
@@ -1149,13 +1162,13 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
                 emit(0x0400000000070000ULL | 252 | (u64{252} << 8) | (u64{1} << 20));
                 emit(0x5c10000000070000ULL | 252 | (u64{255} << 8) | (u64{252} << 20) | (u64{1} << 48));
                 emit(0x5c40000000070000ULL | 251 | (u64{251} << 8) | (u64{252} << 20) |
-                     (minimum ? (u64{1} << 40) | (u64{1} << 41) : 0) | (u64{7} << 48));
+                     (ones_identity ? (u64{1} << 40) | (u64{1} << 41) : 0) | (u64{7} << 48));
                 if (maximum || minimum) {
                     emit(0x5c20000000070000ULL | target | (u64{target} << 8) | (u64{251} << 20) |
                          (u64{minimum ? 7U : 15U} << 39));
-                } else if (bitwise_or) {
+                } else if (bitwise_and || logical) {
                     emit(0x5c40000000070000ULL | target | (u64{target} << 8) | (u64{251} << 20) |
-                         (u64{1} << 41) | (u64{7} << 48));
+                         (u64{logical} << 41) | (u64{7} << 48));
                 } else {
                     emit(0x5c10000000070000ULL | target | (u64{target} << 8) | (u64{251} << 20));
                 }
@@ -1337,6 +1350,24 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
             emit(0xea00000000000000ULL | predicate | dest | (u64{coordinate} << 8) |
                  (u64{data} << 20) | (u64{operation} << 29) | (u64{dimension} << 33) |
                  (u64{handle} << 39) | (u64{1} << 54) | (u64{size} << 51));
+            break;
+        }
+        case 0x3a0: { // SURED [Ra], Rb with the handle in a register (Rc, bits 64-71): 0x59f's
+            // fields, as 0x394 is to 0x593 (same 0xc apart). Maxwell SURED takes a register handle
+            // at bits 39-46 when not bound (bit 51 clear). Cyberpunk 2077's compute adds into a 1D
+            // buffer through the handle its SUATOM (0x394) uses next.
+            const u32 coordinate = insn.Bits(24, 8), data = insn.Bits(32, 8), handle = insn.Bits(64, 8);
+            const u32 dimension = insn.Bits(61, 3);
+            const u32 operation = insn.Bits(87, 4), size = insn.Bits(73, 3);
+            constexpr std::array<u32, 6> coordinate_count{1, 1, 2, 2, 3, 3};
+            const u32 limit = uses_uniform_bank ? 216U : 246U;
+            if ((insn.words[2] & ~0x07800effU) != 0x0010e000U || insn.Bits(40, 21) || dimension > 5 ||
+                operation > 7 || size > 1 || handle >= limit || (data >= limit && data != 255) ||
+                coordinate + coordinate_count[dimension] > limit)
+                return fail(index, "native bindless surface reduction mode");
+            emit(0xeb40000000000000ULL | predicate | data | (u64{coordinate} << 8) |
+                 (u64{size} << 20) | (u64{operation} << 24) | (u64{dimension} << 33) |
+                 (u64{handle} << 39));
             break;
         }
         case 0xb9b: { // SUST.P buffer/2D/array/3D, all four channels or R alone.
@@ -1750,6 +1781,7 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
             }
             const u32 size = insn.Bits(73, 3);
             u32 address = insn.Bits(24, 8);
+            bool strong_gpu_load = false;
             if (size > 6 || (opcode == 0x381 && insn.Bits(32, 8)) ||
                 (size == 5 && (dest & 1)) || (size == 6 && (dest & 3)))
                 return fail(index, "native global load mode");
@@ -1761,7 +1793,11 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
                 // The uniform base sits where a register source would (bits 32-37).
                 const u32 uniform_address =
                     insn.Bits(38, 2) ? ~0U : uniform_register(insn.Bits(32, 6));
-                if ((insn.words[2] & ~(0x04000000U | 0x3fU | 0xe00U | 0x2000U)) != 0x081e8100 ||
+                // Ordering at 77-80: 4 constant, 5 strong CTA (bit 77), 7 strong GPU (bits 77-78,
+                // Cyberpunk 2077's compute), fenced like the strong descriptor loads above.
+                strong_gpu_load = insn.Bits(77, 4) == 7;
+                if ((insn.words[2] & ~(0x04000000U | 0x3fU | 0xe00U | 0x2000U |
+                                       (strong_gpu_load ? 0x4000U : 0U))) != 0x081e8100 ||
                     uniform_address == ~0U || (uniform_address & 1))
                     return fail(index, "native global load uniform addressing mode");
                 if (address == 255) {
@@ -1776,8 +1812,10 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
                     address = 250;
                 }
             }
+            if (strong_gpu_load) emit(0xef98000000000000ULL | predicate | (u64{1} << 8));
             emit(base(0xeed0000000000000ULL) | (u64{address} << 8) |
                  (u64{insn.Bits(40, 24)} << 20) | (u64{1} << 45) | (u64{size} << 48));
+            if (strong_gpu_load) emit(0xef98000000000000ULL | predicate | (u64{1} << 8));
             break;
         }
         case 0x386: case 0x986: { // Global store of 32/64/128 bits, 64-bit address.
