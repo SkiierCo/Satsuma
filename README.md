@@ -29,8 +29,8 @@ own console.
 
 ## Download
 
-Portable Windows builds are on the [releases page](https://github.com/SkiierCo/Satsuma/releases).
-Extract the zip and run `satsuma.exe`; the `user` folder next to it keeps settings and saves.
+Builds are on the [releases page](https://github.com/SkiierCo/Satsuma/releases). Extract the zip and run
+`satsuma.exe`; the `user` folder next to it keeps settings and saves.
 
 ## Switch 2 Editions of Switch 1 games
 
