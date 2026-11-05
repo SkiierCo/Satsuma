@@ -1722,7 +1722,8 @@ void EmitContext::DefineMesh(const IR::Program& program) {
     mesh_attribute_words = (std::max)(
         mesh_primitive_base + Common::DivCeil(mesh_info.max_primitives, 32U) * primitive_lines * 32,
         1U);
-    mesh_map_bytes = 4 + 3 * mesh_info.max_primitives;
+    const u32 indices_per_primitive{MeshIndicesPerPrimitive(mesh_info.topology)};
+    mesh_map_bytes = 4 + indices_per_primitive * mesh_info.max_primitives;
     mesh_shared_u32 = TypePointer(spv::StorageClass::Workgroup, U32[1]);
     mesh_attributes = DefineVariable(*this, TypeArray(U32[1], Const(mesh_attribute_words)),
                                      std::nullopt, spv::StorageClass::Workgroup);
@@ -1736,9 +1737,12 @@ void EmitContext::DefineMesh(const IR::Program& program) {
 
     const Id vertex_count{Const(mesh_info.max_vertices)};
     const Id primitive_count{Const(mesh_info.max_primitives)};
-    mesh_primitive_indices =
-        DefineVariable(*this, TypeArray(U32[3], primitive_count),
-                       spv::BuiltIn::PrimitiveTriangleIndicesEXT, spv::StorageClass::Output);
+    mesh_primitive_indices = DefineVariable(
+        *this, TypeArray(U32[indices_per_primitive], primitive_count),
+        indices_per_primitive == 1   ? spv::BuiltIn::PrimitivePointIndicesEXT
+        : indices_per_primitive == 2 ? spv::BuiltIn::PrimitiveLineIndicesEXT
+                                     : spv::BuiltIn::PrimitiveTriangleIndicesEXT,
+        spv::StorageClass::Output);
     std::array<Id, IR::NUM_GENERICS> generics[2]{};
     Id point_size{}, primitive_layer{}, primitive_viewport{}, primitive_id_output{};
     const auto per_primitive_builtin = [&](Id& variable, spv::BuiltIn builtin) {
@@ -1803,6 +1807,12 @@ void EmitContext::DefineMesh(const IR::Program& program) {
     }
     for (const u32 line : mesh_info.primitive_lines) {
         mesh_primitive_targets.push_back(target(line, true));
+    }
+    if (indices_per_primitive == 1 && !Sirit::ValidId(point_size)) {
+        // Points the program gives no size: 1.0, the size points have with no PointSize written.
+        point_size = DefineVariable(*this, TypeArray(F32[1], vertex_count), spv::BuiltIn::PointSize,
+                                    spv::StorageClass::Output);
+        mesh_default_point_size = point_size;
     }
 }
 

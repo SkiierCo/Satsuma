@@ -403,6 +403,7 @@ public:
     u32 mesh_threads{};
     u32 mesh_attribute_words{};
     u32 mesh_map_bytes{};
+    Id mesh_default_point_size{}; ///< Point meshes without a PointSize output: written as 1.0
     u32 mesh_primitive_base{}; ///< first word of the per-primitive groups
     std::vector<MeshLineTarget> mesh_vertex_targets;
     std::vector<MeshLineTarget> mesh_primitive_targets;

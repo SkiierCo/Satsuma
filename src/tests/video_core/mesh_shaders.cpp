@@ -215,3 +215,34 @@ TEST_CASE("Stage buffer accesses are rejected outside task and mesh programs", "
     CHECK_THROWS_AS(Emit(Shader::Stage::VertexB, code, MeshRegisters),
                     Shader::NotImplementedException);
 }
+
+TEST_CASE("Mesh programs output points and lines as well as triangles", "[spirv][mesh]") {
+    // SPIR-V OpExecutionMode (16) modes: OutputPoints 27, OutputLinesEXT 5269,
+    // OutputTrianglesEXT 5298. Ocarina of Time's meshes: SET_MESH_SHADER_A 0x00040200, points.
+    const auto code = Lower(std::array{Isberd(4, 255, 0x0), Isberd(5, 255, 0x10),
+                                       Isbewr(255, 0x0, 5, true, 3),
+                                       Isbewr(255, 0x3, 4, true, 0),
+                                       Isbewr(255, 0x4, 255, false, 0),
+                                       Isbewr(255, 0x5, 4, false, 0), Exit});
+    const auto has_mode = [](std::span<const u32> spirv, u32 mode) {
+        for (size_t offset = 5; offset < spirv.size();) {
+            const u32 word_count{spirv[offset] >> 16};
+            if (word_count == 0) break;
+            if ((spirv[offset] & 0xffff) == 16 && spirv[offset + 2] == mode) return true;
+            offset += word_count;
+        }
+        return false;
+    };
+    for (const auto& [topology, mode] : {std::pair{0U, 27U}, std::pair{1U, 5269U},
+                                         std::pair{4U, 5298U}}) {
+        auto registers = MeshRegisters;
+        registers[0] = (registers[0] & ~0xfU) | topology;
+        const auto spirv = Emit(Shader::Stage::Mesh, code, registers);
+        CHECK(has_mode(spirv, mode));
+        CHECK(CountOp(spirv, OpSetMeshOutputsEXT) == 1);
+    }
+    // Line loops and strips are not mesh output topologies.
+    auto registers = MeshRegisters;
+    registers[0] = (registers[0] & ~0xfU) | 2U;
+    CHECK_THROWS_AS(Emit(Shader::Stage::Mesh, code, registers), Shader::NotImplementedException);
+}

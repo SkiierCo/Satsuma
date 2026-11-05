@@ -6,6 +6,15 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-05
 
+- **Mesh shaders that output points or lines (Build 82).** Fil sent two logs from another
+  helper's Lichii build (`selevet-oot-perf`) running Ocarina of Time: 3 and 8 graphics pipelines
+  failed with "Mesh output topology 0 (SET_MESH_SHADER_A 0x00040200)". Satsuma, Lichii and Nemyu
+  only built triangle meshes (topology 4). SET_MESH_SHADER_A uses the primitive topology numbers,
+  so 0 is points (here up to 32 points); our own implementation now also builds point and line
+  meshes: the primitive map packs 1, 2 or 3 vertex indices per primitive, written to
+  PrimitivePointIndicesEXT / PrimitiveLineIndicesEXT / PrimitiveTriangleIndicesEXT, and points the
+  program gives no size get 1.0. A test covers points, lines and triangles. Not checked against a
+  Satsuma OoT log (the logs were Lichii's). Needs testing.
 - **Cyberpunk 2077: compute and vertex shaders that never ran (Build 81).** Fil's Build 79 run
   still shows the green screen (Bink videos decoded into all-zero Y/Cb/Cr images). The log has
   two compute pipelines failing with a bare "SPIR-V Instruction is not implemented", three more
