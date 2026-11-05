@@ -51,8 +51,8 @@ the executable switches to portable mode.
 ## Credits
 
 Satsuma is derived from [Eglantine](https://github.com/Djihads80/Eglantine), Updated and
-maintained by Fil, Some patches and additions are thanks to efforts by Zortos, Penis6, and
-Selevet, respectively.
+maintained by Fil, Some patches and additions are thanks to efforts by Zortos, Penis6,
+Selevet, and UesleiDev (creator of Nemyu), respectively.
 
 ## License
 
