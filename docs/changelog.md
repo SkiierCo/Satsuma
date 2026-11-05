@@ -28,9 +28,9 @@ in that game yet. The commit history has the full detail.
   - `EDEN_NX2_SPARSE_REMAP=0` (listed in `nx2_switches.txt`) goes back to the old behaviour for
     A/B runs: no 216, blocks from the graphics pool as the GPU writes them.
   The log shows `nx2:gpu 216:` lines with the tile totals. Needs testing.
-- **Build numbers.** The build number lives in `dist/build_number.txt` and shows in the title
-  bar, the About box and the first log line ("Satsuma Version: Satsuma Build 72"). This is
-  Build 72, after the Build 71 release.
+- **Build numbers.** The build number lives in `dist/build_number.txt` and shows in the About
+  box and the first log line ("Satsuma Version: Satsuma Build 72"). This is Build 72, after the
+  Build 71 release.
 - **Ocarina of Time ("Green Hat") fixes and new shader support, from Lichii build 75.**
   - Boot: GPU report timestamps on Switch 2 are global-clock nanoseconds, not Maxwell GPU
     ticks, so the game's CPU/GPU time calibration holds. The kernel's address arbiter gains
