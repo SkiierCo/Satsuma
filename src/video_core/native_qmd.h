@@ -89,7 +89,12 @@ public:
                 const Word flags = qmd[base + 1];
                 if (!(flags & (1U << 23))) continue;
                 const bool add = (flags & (1U << 26)) != 0;
-                if ((flags & (0x3bU << 24)) || (flags >> 30) != 1 ||
+                // Bit 30: one-word structure (the payload); clear, four words (the payload, then
+                // a 64-bit timestamp; Cyberpunk 2077's queue syncs at word 52). Reductions and
+                // max releases only in the one-word form.
+                const bool one_word = (flags >> 30) == 1;
+                if ((flags & (0x3bU << 24)) || (flags >> 30) > 1 ||
+                    (!one_word && (flags & ((1U << 26) | (1U << 19)))) ||
                     (add && (flags & (7U << 20)))) return "unsupported QMD release format";
                 if (add) {
                     if constexpr (!std::is_invocable_r_v<bool, Release, Address, Word, Word>)

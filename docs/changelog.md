@@ -11,6 +11,10 @@ in that game yet. The commit history has the full detail.
   (offline, from a shader dump of Fil's run); the run before had two compute dispatches failing.
   Cyberpunk plays its videos with Bink, decoded into Y, Cb and Cr images that a shader
   combines; all-zero images give exactly a flat green. Needs testing.
+- **Four-word QMD releases.** A compute dispatch's release with bit 30 clear writes the
+  payload and a 64-bit timestamp; Satsuma refused those, and Cyberpunk 2077's queue sync at
+  QMD word 53 (`0x00800011`) stopped its compute queue about 85 s in. Now accepted and written
+  with the timestamp (max and add releases still one word). Needs testing.
 - **Switch 2 Edition DLC laid over the game's files.** Super Mario Bros. Wonder's Switch 2
   Edition DLC (Meetup in Bellabel Park) holds files laid out like the game's own, and the game
   only mounts its RomFS, never the add-on content, so it never saw the DLC. When a Switch 1

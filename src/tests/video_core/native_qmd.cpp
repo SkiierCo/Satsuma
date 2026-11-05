@@ -113,3 +113,26 @@ TEST_CASE("Invalid QMD snapshots cannot partially change the live scheduler",
     CHECK(fixture.releases == 1);
 }
 } // namespace
+
+TEST_CASE("A four-word QMD release (bit 30 clear) at word 52 is accepted",
+          "[video_core][qmd]") {
+    // Cyberpunk 2077's queue syncs: word 53 = 0x00800011 (enabled, four-word structure).
+    QmdFixture fixture;
+    fixture.InitializeDescriptor(0);
+    fixture.descriptor[25] = 0;
+    fixture.descriptor[52] = 0x9000;
+    fixture.descriptor[53] = 1U << 23;
+    fixture.descriptor[54] = 42;
+    REQUIRE(fixture.Signal(fixture.first, 3).empty());
+    CHECK(fixture.releases == 1);
+}
+
+TEST_CASE("Four-word QMD releases are refused for max and add reductions", "[video_core][qmd]") {
+    for (const u32 kind : {1U << 19, 1U << 26}) {
+        QmdFixture fixture;
+        fixture.InitializeDescriptor(0);
+        fixture.descriptor[25] = (1U << 23) | kind;
+        CHECK(fixture.Signal(fixture.first, 3) == "unsupported QMD release format");
+        CHECK(fixture.releases == 0);
+    }
+}

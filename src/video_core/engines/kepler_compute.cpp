@@ -400,8 +400,12 @@ bool KeplerCompute::ProcessNativeMethod(Core::System& system, u32 method, u32 ar
                     if (watch != 0 && (address & ~u64{0xf}) == (watch & ~u64{0xf})) {
                         LOG_INFO(HW_GPU, "Semaphore watch: QMD release {:#x} = {:#x} flags {:#x}", address, payload, flags);
                     }
+                    // A four-word release (bit 30 clear) also writes a timestamp after the payload.
                     rasterizer->Query(address, VideoCommon::QueryType::Payload,
-                        VideoCommon::QueryPropertiesFlags::IsAFence, payload, 0);
+                        (flags & (1U << 30)) ? VideoCommon::QueryPropertiesFlags::IsAFence
+                                             : VideoCommon::QueryPropertiesFlags::IsAFence |
+                                                   VideoCommon::QueryPropertiesFlags::HasTimeout,
+                        payload, 0);
                 }
                 return true;
             }, [&](const auto& descriptor) { return DispatchNativeCompute(descriptor); });
