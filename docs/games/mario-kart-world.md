@@ -4,11 +4,13 @@ Program ID: `0400C3F00006E000`. Status: in game + (see [compatibility](../compat
 
 ## Symptoms
 
-- The 3D scene is unlit and black while the sky and the karts render (Fil, 2026-11-05). The log
-  has six "nx2:gpu sparse region at ...: pool exhausted, GPU writes to its unbacked blocks are
-  dropped" warnings.
-- The command stream desyncs and the game crashes (unbound subchannel, bad syncpoint IDs, then
-  garbage GPU state). Separate from the above; not investigated here.
+- Fixed: the 3D scene was unlit and black while the sky and the karts rendered, with six "pool
+  exhausted" warnings in the log. Graphics correct since Build 72 (Fil).
+- Fixed: the game crashed after 70 s to about 11 minutes when the command stream desynced
+  (unbound subchannel, bad syncpoint IDs, then garbage GPU state). No crash since Build 74 (Fil,
+  over 21 minutes).
+- Runs at 30 FPS while the game asks for 60.
+- A blue circle shows around the drift sparks; the console shows only the sparks.
 
 ## Findings
 
