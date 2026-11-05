@@ -16,7 +16,9 @@ in that game yet. The commit history has the full detail.
   names such a game. Tested on Wonder (Fil): it crashed about 2 s in. Satsuma runs Wonder's
   Switch 1 program (Switch 1 GPU and controller paths), which can't use the Switch 2 Edition
   files, so the Wonder line was removed. Bellabel Park needs the Switch 2 program, which the
-  dump's update does not contain in a recognisable form.
+  dump does not contain: its base and update 327680 are both Switch 1 programs (the update
+  has the shop prompts for buying the upgrade, `ShowShopForUpgrade`,
+  `CheckMeetConditionPurchaseUpgrade`), and the DLC folder holds only the upgrade's data.
 - **Per-game display rate.** `EDEN_NX2_VSYNC_HZ_<program ID>` overrides `EDEN_NX2_VSYNC_HZ`
   for one game. The shipped switches cap Super Mario Bros. Wonder at 67 under the 120 Hz
   default (Fil's request).
