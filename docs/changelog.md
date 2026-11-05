@@ -6,6 +6,15 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-05
 
+- **Ocarina of Time: AV1 movies (Build 78).** Build 77 still showed black 3D scenes. Fil's
+  RenderDoc capture of one: 84 events a frame, only UI quads and post-processing, no 3D geometry
+  and no compute dispatches; the game's shader cache held just 15 pipelines, and no shader failed.
+  The game configures its video decoder with the 10 bytes `video/av01`, which Satsuma did not
+  recognise, and its bundled FFmpeg had no AV1 decoder at all, so the first movie frame came back
+  as end of stream. Satsuma now recognises `video/av01` and `video/av1`, maps AV1 to FFmpeg, and
+  the Windows and Linux x64 builds use Lichii build 75's FFmpeg 9.0.2 with libdav1d
+  (`Takoroka/ffmpeg-av1`, approved by Fil); a test checks FFmpeg has an AV1 decoder. Nemyu
+  v0.1.4's notes list AV1 movies among the fixes that let the game render. Needs testing.
 - **Ocarina of Time: Lichii's two behaviours back on, for this game only (Build 77).** Fil's run:
   menus at 60 FPS and audio fine, but every 3D scene (gameplay included) black, with no shader or
   draw errors in the log. Lichii build 75, which runs the game, made GPU report timestamps

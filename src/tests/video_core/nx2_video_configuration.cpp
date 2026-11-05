@@ -9,6 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "video_core/host1x/ffmpeg.h"
 #include "video_core/host1x/nx2_video_decoder.h"
 
 using Tegra::Host1x::NvdecCommon::VideoCodec;
@@ -20,6 +21,9 @@ TEST_CASE("Nx2 video MIME configurations retain their codec", "[nx2_video]") {
         std::pair{std::string_view{"video/vp8"}, VideoCodec::VP8},
         std::pair{std::string_view{"video/avc"}, VideoCodec::H264},
         std::pair{std::string_view{"video/h264"}, VideoCodec::H264},
+        // Ocarina of Time configures its movies with the 10 bytes "video/av01".
+        std::pair{std::string_view{"video/av01"}, VideoCodec::AV1},
+        std::pair{std::string_view{"video/av1"}, VideoCodec::AV1},
     };
     for (const auto& [mime, codec] : cases) {
         std::vector<u8> data(mime.begin(), mime.end());
@@ -68,5 +72,14 @@ TEST_CASE("Nx2 video rejects unknown and incomplete binary configurations", "[nx
     };
     for (const auto& data : rejected) {
         CHECK_FALSE(ParseNx2VideoConfiguration(data));
+    }
+}
+
+TEST_CASE("Nx2 video FFmpeg has decoders for every Switch 2 movie codec", "[nx2_video]") {
+    // Ocarina of Time's movies are AV1: the bundled FFmpeg must carry a decoder (libdav1d).
+    for (const VideoCodec codec : {VideoCodec::H264, VideoCodec::VP8, VideoCodec::VP9, VideoCodec::AV1}) {
+        const FFmpeg::Decoder decoder{codec};
+        INFO("codec " << static_cast<u64>(codec));
+        CHECK(decoder.GetCodec() != nullptr);
     }
 }
