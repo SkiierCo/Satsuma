@@ -28,7 +28,19 @@ surface store through a register handle (`0x99c`). All five now lower. The same 
 has 96 Fermi 2D "source depth is not one" asserts and 85 storage-buffer tracking warnings;
 not yet looked at. No video decoder activity.
 
+## 2026-11-04 runs (later builds)
+
+- Bink: the game plays its videos with Bink (`.bk2`), decoded into Y, Cb and Cr images that a
+  shader combines. All-zero images give exactly a flat green.
+- Shader dumps of Fil's runs: 31, then 62 programs loaded; with the `0x394` surface atomic
+  lowering all of them translate offline.
+- A compute queue sync used a four-word QMD release (word 53 = `0x00800011`), which Satsuma
+  refused about 85 s in. Four-word releases are now accepted.
+- Latest run (after that fix): the game gets further. At about 43 s one compute program
+  translates but its SPIR-V uses an instruction the backend doesn't implement, and seven
+  graphics pipelines fail to track a bindless texture handle that the shader loads from global
+  memory (`LoadGlobal32`). 18 compute dispatches are skipped as a result.
+
 ## Next
 
-Test for the green screen. If it remains, look at the 2D engine asserts and storage-buffer
-warnings. The game uses DLSS too, so tensor emulation may also matter once it renders.
+Implement the missing SPIR-V instruction and follow bindless handles loaded from global memory.
