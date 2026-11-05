@@ -44,6 +44,11 @@ I2FP with an immediate (`0x845`, a main-menu compute shader). On the 2026-11-03 
   as zeros, and their pages are in no GPU cache and in none of the `nx2:gsv` native memory
   objects. Next: trace which write path is meant to fill those pages.
 
+## 2026-11-05 Build 82 run (Fil)
+
+Regressed: UI elements are missing again; it boots, gameplay is black, then it breaks. Its log
+reached 105 MB.
+
 ## Next
 
 Test the 2026-11-04 build: main menu background, a cutscene, gameplay. Send the log; its

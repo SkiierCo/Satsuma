@@ -57,6 +57,11 @@ not yet looked at. No video decoder activity.
   no routable storage buffer (two programs), a global store register form and a shared atomic
   form.
 
+## 2026-11-05 Build 82 run (Fil)
+
+Still the green screen, now at 0 FPS. The log of that session filled up on Yoshi before
+Cyberpunk ran, so whether root tables 1 and 7 are written is still unknown.
+
 ## Next
 
 Fil's Build 81 run: check whether the green screen changes, whether root tables 1 and 7 are

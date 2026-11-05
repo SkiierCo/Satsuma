@@ -81,6 +81,10 @@ front. Build 76 logs the waits per site. Build 76 profile (Fil): per second the 
 the puller 150-210 ms (2,200-3,500 times), macro parameters on GPU-written pages 133-214 ms
 (1,000-1,900), macro DMA reads 45-75 ms; still 30 FPS. These two are next.
 
+## 2026-11-05 Build 82 run (Fil)
+
+No crashes at all. 30 FPS and below. The only graphical error is the blue circle while drifting.
+
 ## Next
 
 - A blue circle around the drift sparks (the console shows only the sparks).

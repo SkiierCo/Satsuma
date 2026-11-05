@@ -6,6 +6,13 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-05
 
+- **Fil's Build 82 run of every game.** Raiders perfect; Switch Sports great; Mario Kart World
+  runs at 30 FPS and below and no longer crashes at all, its only graphical error the blue circle
+  while drifting; Kirby unchanged (black screen); Ocarina of Time's menus and cutscenes perfect,
+  gameplay with very strong bloom. Regressions: Yoshi's UI elements are missing again and its
+  gameplay is black before it breaks; Fire Emblem is very pixelated and the screen shakes (UI and
+  audio fine). Cyberpunk 2077 still shows the green screen, at 0 FPS. The log reached 105 MB on
+  Yoshi alone, so the other games' runs are not in it.
 - **Mesh shaders that output points or lines (Build 82).** Fil sent two logs from another
   helper's Lichii build (`selevet-oot-perf`) running Ocarina of Time: 3 and 8 graphics pipelines
   failed with "Mesh output topology 0 (SET_MESH_SHADER_A 0x00040200)". Satsuma, Lichii and Nemyu
