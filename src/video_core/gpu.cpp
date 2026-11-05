@@ -39,6 +39,7 @@
 #include "video_core/host1x/syncpoint_manager.h"
 #include "video_core/memory_manager.h"
 #include "video_core/nx2.h"
+#include "video_core/nx2_game_switch.h"
 #include "video_core/renderer_base.h"
 #include "video_core/shader_notify.h"
 
@@ -159,14 +160,13 @@ struct GPU::Impl {
     }
 
     [[nodiscard]] u64 GetTicks() const {
-        // EDEN_NX2_GPU_TIME_NS=1: Switch 2 report timestamps in nanoseconds (Lichii build 75). Off
-        // by default: Mario Kart World and Switch Sports dropped their resolution with it.
-        static const bool nanoseconds = [] {
-            const char* value = std::getenv("EDEN_NX2_GPU_TIME_NS");
-            return value != nullptr && value[0] == '1';
-        }();
+        // EDEN_NX2_GPU_TIME_NS=1 (or EDEN_NX2_GPU_TIME_NS_<program ID>=1 for one game): Switch 2
+        // report timestamps in nanoseconds (Lichii build 75, for Ocarina of Time). Off by default:
+        // Mario Kart World and Switch Sports dropped their resolution with it.
+        static VideoCommon::Nx2GameSwitch nanoseconds{"EDEN_NX2_GPU_TIME_NS"};
         return ReadGpuTimestamp(system.CoreTiming(),
-                                nanoseconds && g_nx2_ampere.load(std::memory_order_relaxed),
+                                g_nx2_ampere.load(std::memory_order_relaxed) &&
+                                    nanoseconds.Enabled(),
                                 Settings::values.gpu_clock.GetValue());
     }
 

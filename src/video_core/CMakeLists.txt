@@ -110,6 +110,7 @@ add_library(video_core STATIC
     native_qmd.h
     native_query_trace.h
     nx2.h
+    nx2_game_switch.h
     nx2_profile.h
     nx2_rt_report.h
     fire_emblem_upscale.h

@@ -27,6 +27,7 @@ Switch 2 Edition DLC can't be used.
 | Yoshi | `0400245021D2C000` | Boots | Reaches gameplay again; gameplay renders black and many UI elements are missing. Gameplay shaders still read as zeros. | [Details](games/yoshi.md) |
 | Cyberpunk 2077 | `0400DDB020648000` | Boots | Launches to a green screen (its Bink videos decode to all-zero images). Every dumped shader now translates and the compute queue gets further; a missing SPIR-V instruction and texture handles read from memory are next. | [Details](games/cyberpunk-2077.md) |
 | Kirby Air Riders | `040077201BE50000` | Boots | Fully playable at 60 FPS, if you can imagine seeing the game: it runs behind a black screen. | — |
+| The Legend of Zelda: Ocarina of Time | `0400486024DEC000` | Boots | Menus at 60 FPS and audio fine, but every 3D scene, gameplay included, is black (Fil, Build 76). Lichii's two Ocarina behaviours are on for it in Build 77, needs testing. | — |
 | Super Mario Wonder | `010015100B514000` | Playable | Fully playable (Fil, 2026-11-04). Capped at 67 Hz (`EDEN_NX2_VSYNC_HZ_010015100B514000=67`). Runs as the Switch 1 version. The dump holds only Switch 1 programs (base and update 327680; the update offers to sell the upgrade) and the upgrade DLC's data, not the Switch 2 Edition program, so Meetup in Bellabel Park does not appear. | — |
 
 To report a result, see [CONTRIBUTING.md](../CONTRIBUTING.md).

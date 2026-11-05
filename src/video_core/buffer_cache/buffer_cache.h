@@ -21,20 +21,19 @@
 #include "video_core/guest_memory.h"
 #include "video_core/host1x/gpu_device_memory_manager.h"
 #include "video_core/nx2.h"
+#include "video_core/nx2_game_switch.h"
 #include "video_core/nx2_profile.h"
 #include "video_core/texture_cache/util.h"
 
 namespace VideoCommon {
 
-// EDEN_NX2_SSBO_POINTER_ONLY=1: native compute storage buffers take their pointer alone, up to
-// 8 MiB (Lichii build 75). Off by default: Mario Kart World and Switch Sports slowed down and
-// drew models black with it.
+// EDEN_NX2_SSBO_POINTER_ONLY=1 (or EDEN_NX2_SSBO_POINTER_ONLY_<program ID>=1 for one game):
+// native compute storage buffers take their pointer alone, up to 8 MiB (Lichii build 75, for
+// Ocarina of Time). Off by default: Mario Kart World and Switch Sports slowed down and drew
+// models black with it.
 inline bool NativeStorageBufferPointerOnly() {
-    static const bool enabled = [] {
-        const char* value = std::getenv("EDEN_NX2_SSBO_POINTER_ONLY");
-        return value != nullptr && value[0] == '1';
-    }();
-    return enabled;
+    static Nx2GameSwitch enabled{"EDEN_NX2_SSBO_POINTER_ONLY"};
+    return enabled.Enabled();
 }
 
 

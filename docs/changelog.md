@@ -6,6 +6,17 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-05
 
+- **Ocarina of Time: Lichii's two behaviours back on, for this game only (Build 77).** Fil's run:
+  menus at 60 FPS and audio fine, but every 3D scene (gameplay included) black, with no shader or
+  draw errors in the log. Lichii build 75, which runs the game, made GPU report timestamps
+  nanoseconds and binds native compute storage buffers from their pointer; Satsuma turned both off
+  by default after Mario Kart World and Switch Sports regressed with them. Both switches can now
+  be set per game (`EDEN_NX2_GPU_TIME_NS_<program ID>`, `EDEN_NX2_SSBO_POINTER_ONLY_<program
+  ID>`, looked up again when the game changes), and `nx2_switches.txt` turns them on for Ocarina of
+  Time (`0400486024DEC000`). Needs testing.
+- **Mario Kart World drift circle: the brightness comes from GPU work.** In Fil's capture the
+  glow's constant buffer (`c15`, brightness factor 3.999) sits in a buffer that copies and compute
+  shaders write during the frame, so the value is likely computed on the GPU.
 - **Mario Kart World: 30 FPS, the split threads take turns (Build 76).** The game asks for 60 FPS
   and Satsuma accepts 60 presents a second, but the host finishes about 30 frames. Fil's profile
   run: each second the split's front thread waited about 450 ms for its back thread (some 8,000

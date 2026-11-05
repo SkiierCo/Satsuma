@@ -70,3 +70,7 @@ EDEN_NX2_VSYNC_HZ_010015100B514000=67
 # GPU report timestamps in nanoseconds; native compute storage buffers from their pointer alone.
 #EDEN_NX2_GPU_TIME_NS=1
 #EDEN_NX2_SSBO_POINTER_ONLY=1
+# Either can be set for one game with _<program ID>. On for Ocarina of Time, which Lichii made
+# them for:
+EDEN_NX2_GPU_TIME_NS_0400486024DEC000=1
+EDEN_NX2_SSBO_POINTER_ONLY_0400486024DEC000=1
