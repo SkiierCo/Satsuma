@@ -15,7 +15,9 @@ in that game yet. The commit history has the full detail.
   memory had when it was mapped, so the new memory showed the old pages: the command list at
   `0x11bea8cc9c` read as vertex data. Destroying GPU memory (`nx2:gpu` 102) now releases its
   device ranges once no GPU mapping uses it, and a device range is reused only while it still
-  reaches the memory the CPU address has. Needs testing.
+  reaches the memory the CPU address has. Tested (Fil): no crash in over 21 minutes (the longest
+  run before crashed at 689 s), no desync report, graphics good. A blue circle shows around the
+  drift sparks, which the console doesn't draw.
 - **Mario Kart World: command-stream desync (Build 73).** With the GPU split, the front thread
   parses command lists as they arrive, while GPU memory maps (`nx2:gpu` 211, sub 101) were
   deferred to the back thread. A list the game mapped and submitted right away could be read

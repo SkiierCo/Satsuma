@@ -63,7 +63,10 @@ geometry and textures old data, which fits the terrain glitches. Build 74 releas
 memory's device ranges once no GPU mapping uses it, and reuses a device range only while it
 still reaches the CPU address's current memory (a warning is logged when it doesn't).
 
+**Build 74 test (Fil).** No crash in over 21 minutes, no desync report and no stale-range
+warning: releasing destroyed memory's ranges was enough. Graphics good, 30 FPS.
+
 ## Next
 
-- Run Build 74: no "Command stream desync" and no terrain glitches; a "no longer reaches its
-  memory, not reused" warning would show the check caught a stale range.
+- A blue circle around the drift sparks (the console shows only the sparks).
+- Frame rate above 30 FPS.
