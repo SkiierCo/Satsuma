@@ -27,7 +27,10 @@ in that game yet. The commit history has the full detail.
     it whole first (`EDEN_NX2_SPARSE_ALIASED`, `EDEN_NX2_SPARSE_UNBACKED`).
   - `EDEN_NX2_SPARSE_REMAP=0` (listed in `nx2_switches.txt`) goes back to the old behaviour for
     A/B runs: no 216, blocks from the graphics pool as the GPU writes them.
-  The log shows `nx2:gpu 216:` lines with the tile totals. Needs testing.
+  The log shows `nx2:gpu 216:` lines with the tile totals.
+  Tested (Fil, Build 72): the world renders correctly again and the expected 30 FPS is back. By
+  52 s: 9,080 calls to 216, 968 MiB of tiles mapped, 19 sparse regions on tiles, no "pool
+  exhausted". The game still crashed at 70 s from the separate command-stream desync.
 - **Build numbers.** The build number lives in `dist/build_number.txt` and shows in the About
   box and the first log line ("Satsuma Version: Satsuma Build 72"). This is Build 72, after the
   Build 71 release.

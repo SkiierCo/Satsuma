@@ -34,7 +34,15 @@ device pages at the game's memory), dropped writes outside the tiles with the ea
 given back, and per-sparse-block host memory for the large images over the tiles.
 `EDEN_NX2_SPARSE_REMAP=0` restores the old behaviour for comparison.
 
+## Build 72 test (Fil, 2026-11-05)
+
+The game looks right again and runs at the expected 30 FPS. The log shows 216 working: by 52 s
+there were 9,080 calls (8,982 maps, 98 unmaps), 968 MiB of the game's tiles mapped, 19 sparse
+regions switched to tiles, and no "pool exhausted" warnings. The 7,917 maps into GPU-only
+regions were left out, as those regions keep their own memory. The game still crashed at 70 s:
+an unbound subchannel at 69.4 s, then invalid Fermi2D registers, syncpoint ID 0x500 and an
+image of garbage size. That is the command-stream desync.
+
 ## Next
 
-- Run the game on the new build: the log should show `nx2:gpu 216:` lines (calls, maps,
-  unmaps, MiB of tiles mapped, MiB of blocks released) and no "pool exhausted" warnings.
+- The command-stream desync (crash at 70 s on Build 72, 169 s on 2026-11-03).
