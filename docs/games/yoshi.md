@@ -1,6 +1,6 @@
 # Yoshi
 
-Program ID: `0400245021D2C000`. Status: in game (see [compatibility](../compatibility.md)).
+Program ID: `0400245021D2C000`. Status: boots (see [compatibility](../compatibility.md)).
 
 ## Symptoms
 
