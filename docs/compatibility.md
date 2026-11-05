@@ -12,7 +12,7 @@ Switch 2 Edition DLC can't be used.
 | Status | Meaning |
 | --- | --- |
 | Playable | Can be played start to finish with minor issues |
-| In game + | Plays well, but finishing it start to finish and steady performance are not assured |
+| In&nbsp;game&nbsp;+ | Plays well, but finishing it start to finish and steady performance are not assured |
 | In game | Gets into gameplay, with issues that block or spoil play |
 | Menus | Reaches menus or title screen only |
 | Boots | Starts, but does not reach menus |
@@ -20,9 +20,9 @@ Switch 2 Edition DLC can't be used.
 
 | Game | Title ID | Status | Notes | Details |
 | --- | --- | --- | --- | --- |
-| Fire Emblem: Fortune's Weave | `04007EF01F8AE000` | In game + | Renders since the TXD lowering; faces fixed; 30 FPS docked as the game requests. FSR 3.1 upscaling runs. | — |
+| Fire Emblem: Fortune's Weave | `04007EF01F8AE000` | In&nbsp;game&nbsp;+ | Renders since the TXD lowering; faces fixed; 30 FPS docked as the game requests. FSR 3.1 upscaling runs. | — |
 | Splatoon Raiders | `0400380020056000` | Playable | Fully playable (Fil, 2026-11-04). | — |
-| Mario Kart World | `0400C3F00006E000` | In game + | Performance much better. Crashes consistently: the command stream desyncs (unbound subchannel, bad syncpoint IDs, then garbage GPU state); also seen on 2026-11-03 at 169 s. | — |
+| Mario Kart World | `0400C3F00006E000` | In&nbsp;game&nbsp;+ | Performance much better. Crashes consistently: the command stream desyncs (unbound subchannel, bad syncpoint IDs, then garbage GPU state); also seen on 2026-11-03 at 169 s. | — |
 | Nintendo Switch Sports Resort | `04008E001F098000` | Playable | Plays fine, graphics correct, bowling pins back (Fil, 2026-11-04). Joy-Con 2 limits: stand-in only, and the prompt asks again after OK. Performance good after the intro. | [Details](games/switch-sports-resort.md) |
 | Yoshi | `0400245021D2C000` | Boots | Reaches gameplay again; gameplay renders black and many UI elements are missing. Gameplay shaders still read as zeros. | [Details](games/yoshi.md) |
 | Cyberpunk 2077 | `0400DDB020648000` | Boots | Launches to a green screen. Five rejected compute shaders now lower; needs testing. | [Details](games/cyberpunk-2077.md) |
