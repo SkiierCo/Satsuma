@@ -151,3 +151,26 @@ TEST_CASE("Ampere register-handle surface store on a 1D buffer", "[video_core][a
     REQUIRE(Field(store, 33, 3) == 1);  // 1D buffer
     REQUIRE(Field(store, 39, 8) == 0);  // handle
 }
+
+TEST_CASE("Ampere register-handle surface atomic on a 1D buffer", "[video_core][ampere]") {
+    // Cyberpunk 2077: @P0 SUATOM.ADD R7, [R6], R7 through the handle in R8.
+    constexpr Instruction Atomic{{0x06070394, 0x20000007, 0x001ee008, 0x012ee200}};
+    const auto lowered = LowerToMaxwell(std::array{Atomic, Exit});
+    INFO(lowered.error);
+    REQUIRE(lowered);
+    REQUIRE(lowered.instructions.size() == 2);
+    const u64 atomic = lowered.instructions.front();
+    REQUIRE((atomic >> 56) == 0xea);
+    REQUIRE(Field(atomic, 0, 8) == 7);   // destination
+    REQUIRE(Field(atomic, 8, 8) == 6);   // coordinate
+    REQUIRE(Field(atomic, 16, 4) == 0);  // @P0
+    REQUIRE(Field(atomic, 20, 8) == 7);  // data
+    REQUIRE(Field(atomic, 29, 4) == 0);  // ADD
+    REQUIRE(Field(atomic, 33, 3) == 1);  // 1D buffer
+    REQUIRE(Field(atomic, 39, 8) == 8);  // handle register
+    REQUIRE(Field(atomic, 51, 3) == 0);  // U32
+    REQUIRE(Field(atomic, 54, 1) == 1);  // bindless
+    auto unknown = Atomic;
+    unknown.words[1] |= 1U << 8; // bits 40-60 are unused in this form
+    REQUIRE_FALSE(LowerToMaxwell(std::array{unknown, Exit}));
+}

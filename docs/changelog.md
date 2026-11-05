@@ -6,6 +6,11 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-04 (third round)
 
+- **Cyberpunk 2077: register-handle surface atomics** (`0x394`, as `0x593` with the handle
+  in a register). With it, all 31 programs Cyberpunk loads before its green screen translate
+  (offline, from a shader dump of Fil's run); the run before had two compute dispatches failing.
+  Cyberpunk plays its videos with Bink, decoded into Y, Cb and Cr images that a shader
+  combines; all-zero images give exactly a flat green. Needs testing.
 - **Switch 2 Edition DLC laid over the game's files.** Super Mario Bros. Wonder's Switch 2
   Edition DLC (Meetup in Bellabel Park) holds files laid out like the game's own, and the game
   only mounts its RomFS, never the add-on content, so it never saw the DLC. When a Switch 1

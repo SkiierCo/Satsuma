@@ -26,7 +26,7 @@ Switch 2 Edition DLC can't be used.
 | Nintendo Switch Sports Resort | `04008E001F098000` | Playable | Plays fine, graphics correct, bowling pins back (Fil, 2026-11-04). Joy-Con 2 limits: stand-in only, and the prompt asks again after OK. Performance good after the intro. | [Details](games/switch-sports-resort.md) |
 | Yoshi | `0400245021D2C000` | Boots | Reaches gameplay again; gameplay renders black and many UI elements are missing. Gameplay shaders still read as zeros. | [Details](games/yoshi.md) |
 | Cyberpunk 2077 | `0400DDB020648000` | Boots | Launches to a green screen. Five rejected compute shaders now lower; needs testing. | [Details](games/cyberpunk-2077.md) |
-| Kirby Air Riders | `040077201BE50000` | Boots | Launches since the built-in font fix (was aborting with 2083-0419); black screen. | — |
+| Kirby Air Riders | `040077201BE50000` | Boots | Fully playable at 60 FPS, if you can imagine seeing the game: it runs behind a black screen. | — |
 | Super Mario Wonder | `010015100B514000` | Playable | Fully playable (Fil, 2026-11-04). Capped at 67 Hz (`EDEN_NX2_VSYNC_HZ_010015100B514000=67`). Runs as the Switch 1 version. The dump holds only Switch 1 programs (base and update 327680; the update offers to sell the upgrade) and the upgrade DLC's data, not the Switch 2 Edition program, so Meetup in Bellabel Park does not appear. | — |
 
 To report a result, see [CONTRIBUTING.md](../CONTRIBUTING.md).

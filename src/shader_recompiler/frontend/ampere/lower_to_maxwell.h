@@ -1271,6 +1271,23 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
                  (u64{size} << 51));
             break;
         }
+        case 0x394: { // SUATOM Rd, [Ra], Rb with the handle in a register (Rc, bits 64-71), as
+            // 0x99c is to SUST; otherwise 0x593's fields. Maxwell SUATOM.D takes a register handle
+            // (bits 39-46, bit 54). Cyberpunk 2077's compute (a counter add on a 1D buffer).
+            const u32 coordinate = insn.Bits(24, 8), data = insn.Bits(32, 8), handle = insn.Bits(64, 8);
+            const u32 dimension = insn.Bits(61, 3), operation = insn.Bits(87, 5);
+            const u32 size = insn.Bits(73, 4);
+            const u32 coordinate_count = dimension == 0 || dimension == 1 ? 1U : dimension <= 3 ? 2U : 3U;
+            const u32 limit = uses_uniform_bank ? 216U : 246U;
+            if ((insn.words[2] & ~0x0f801effU) != 0x001ee000U || insn.Bits(40, 21) || dimension > 5 ||
+                operation > 8 || size > 1 || handle >= limit || data >= limit ||
+                (dest != 255 && dest >= limit) || coordinate + coordinate_count > limit)
+                return fail(index, "native bindless surface atomic mode");
+            emit(0xea00000000000000ULL | predicate | dest | (u64{coordinate} << 8) |
+                 (u64{data} << 20) | (u64{operation} << 29) | (u64{dimension} << 33) |
+                 (u64{handle} << 39) | (u64{1} << 54) | (u64{size} << 51));
+            break;
+        }
         case 0xb9b: { // SUST.P buffer/2D/array/3D, all four channels or R alone.
             const u32 binding = insn.Bits(54, 5), offset = insn.Bits(40, 14);
             const u32 data = insn.Bits(32, 8), coordinate = insn.Bits(24, 8);
