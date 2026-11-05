@@ -4337,14 +4337,17 @@ void MainWindow::UpdateWindowTitle(std::string_view title_name, std::string_view
 
     const auto override_title =
         fmt::format(fmt::runtime(std::string(Common::g_title_bar_format_idle)), build_id);
-    const auto window_title = override_title.empty() ? yuzu_title : override_title;
+    const auto window_title = fmt::format(
+        "{} Build {}", override_title.empty() ? yuzu_title : override_title, Common::g_build_number);
 
     if (title_name.empty()) {
         setWindowTitle(QString::fromStdString(window_title));
     } else if (Common::g_title_bar_format_running[0] != '\0') {
         setWindowTitle(QString::fromStdString(fmt::format(
-            fmt::runtime(std::string(Common::g_title_bar_format_running)), build_id, title_name,
-            title_version, gpu_vendor)));
+            "{} Build {}",
+            fmt::format(fmt::runtime(std::string(Common::g_title_bar_format_running)), build_id,
+                        title_name, title_version, gpu_vendor),
+            Common::g_build_number)));
     } else {
         const auto run_title = [window_title, title_name, title_version, gpu_vendor]() {
             if (title_version.empty()) {

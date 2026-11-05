@@ -31,7 +31,8 @@ public:
                 events.push_back({create ? 's' : 'd', gpu, 0, size});
             },
             [this](u64 gpu, u64 cpu, u64 size) { events.push_back({'b', gpu, cpu, size}); },
-            [this](u64 gpu, u64 size) { events.push_back({'v', gpu, 0, size}); });
+            [this](u64 gpu, u64 size) { events.push_back({'v', gpu, 0, size}); },
+            [this](u64 gpu, u64 cpu, u64 size) { events.push_back({'t', gpu, cpu, size}); });
     }
 
     ~Recorder() {
@@ -185,4 +186,56 @@ TEST_CASE("Nx2 remapped GPU ranges replace their backing", "[nx2_mapping]") {
     events.clear();
     registry.ReleaseBacking(0x1100000, 0x1000);
     CHECK(events.empty());
+}
+
+TEST_CASE("Nx2 sparse tiles reach every address space and replace resident blocks",
+          "[nx2_mapping]") {
+    CleanRegistry clean;
+    auto& registry = Nx2GpuMemoryRegistry::Get();
+    std::vector<Event> events;
+    Recorder recorder{events};
+
+    REQUIRE(registry.CreateSparse(0x400000, 0x800000));
+    registry.BackSparse(0x400000, 0xa00000, 0x400000);
+    events.clear();
+    registry.MapSparseTile(0x400000, 0, 0x400000);
+    registry.MapSparseTile(0x410000, 0x2000000, 0x20000);
+    CHECK(events == std::vector<Event>{{'t', 0x400000, 0, 0x400000},
+                                       {'t', 0x410000, 0x2000000, 0x20000}});
+
+    // Outside its region, or with no region at all: nothing changes.
+    events.clear();
+    registry.MapSparseTile(0xbf0000, 0x2000000, 0x20000);
+    registry.MapSparseTile(0x3f0000, 0x2000000, 0x20000);
+    registry.MapSparseTile(0x1000000, 0x2000000, 0x10000);
+    registry.MapSparseTile(0x400000, 0x2000000, 0);
+    CHECK(events.empty());
+
+    // A late address space gets the tiles, not the block they replaced.
+    std::vector<Event> late_events;
+    Recorder late{late_events};
+    CHECK(late_events == std::vector<Event>{{'s', 0x400000, 0, 0x800000},
+                                            {'t', 0x410000, 0x2000000, 0x20000}});
+}
+
+TEST_CASE("Nx2 late listeners replay what is left of partly unmapped tiles", "[nx2_mapping]") {
+    CleanRegistry clean;
+    auto& registry = Nx2GpuMemoryRegistry::Get();
+
+    REQUIRE(registry.CreateSparse(0x400000, 0x800000));
+    registry.MapSparseTile(0x400000, 0x2000000, 0x40000);
+    registry.MapSparseTile(0x410000, 0, 0x10000);
+    registry.MapSparseTile(0x430000, 0x3000000, 0x20000);
+
+    std::vector<Event> events;
+    Recorder recorder{events};
+    CHECK(events == std::vector<Event>{{'s', 0x400000, 0, 0x800000},
+                                       {'t', 0x400000, 0x2000000, 0x10000},
+                                       {'t', 0x420000, 0x2020000, 0x10000},
+                                       {'t', 0x430000, 0x3000000, 0x20000}});
+
+    REQUIRE(registry.DestroySparse(0x400000, 0x800000));
+    std::vector<Event> late_events;
+    Recorder late{late_events};
+    CHECK(late_events.empty());
 }

@@ -14,6 +14,9 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_WEB_SERVICE=OFF
 cmake --build build --target yuzu tests --parallel 8
 ```
 
+The build number is in `dist/build_number.txt` (one number). Raise it for every new
+build; it shows in the title bar, the About box and the log as "Build <number>".
+
 Windows uses `%APPDATA%\satsuma` for settings, saves and caches. A `user` folder
 next to the executable still explicitly enables portable mode. The released
 package does not include a portable profile, so installed and packaged copies

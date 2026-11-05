@@ -49,6 +49,7 @@ add_executable(tests
     video_core/nx2_gpu_mappings.cpp
     video_core/nx2_sparse_mappings.cpp
     video_core/nx2_sparse_region.cpp
+    video_core/nx2_sparse_tiles.cpp
     video_core/nx2_command_sync.cpp
     video_core/draw_instances.cpp
     video_core/native_qmd.cpp

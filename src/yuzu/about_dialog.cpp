@@ -19,7 +19,8 @@ AboutDialog::AboutDialog(QWidget* parent)
 
     const auto override_build =
         fmt::format(fmt::runtime(std::string(Common::g_title_bar_format_idle)), build_id);
-    const auto yuzu_build_version = override_build.empty() ? yuzu_build : override_build;
+    const auto yuzu_build_version = fmt::format(
+        "{} Build {}", override_build.empty() ? yuzu_build : override_build, Common::g_build_number);
 
     ui->setupUi(this);
     const QIcon yuzu_logo(QStringLiteral(":/img/satsuma.ico"));

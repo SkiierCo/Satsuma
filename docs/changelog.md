@@ -6,6 +6,31 @@ in that game yet. The commit history has the full detail.
 
 ## 2026-11-05
 
+- **Mario Kart World: sparse texture tiles (`nx2:gpu` 216), from Lichii build 75.** Fil's run
+  logged six "pool exhausted" warnings and an unlit, black 3D scene while the sky and karts
+  rendered. The game keeps its world textures in 25 sparse regions (about 20 GiB reserved) and
+  maps its own memory into their tiles with `ExecuteSparseMapRequests` (216), which Satsuma had
+  no handler for; NvRm never even asked, because the GPU characteristics left out
+  `NVGPU_GPU_FLAGS_SUPPORT_REMAP`. Instead every GPU write there took a 4 MiB block from the
+  graphics pool (about 1.9 GiB under the 12 GiB cap) until it ran dry.
+  - The remap flag is reported, and 216 maps a tile to the game's memory (or unmaps it) by
+    re-pointing the region's device pages in GPU-thread order. Mapped tiles count as written,
+    so the texture cache loads the images over them.
+  - Once the game maps tiles into a sparse region, GPU writes outside its tiles are dropped as
+    on the console, and the blocks it was given before go back to the pool.
+  - 216 into GPU-only regions (no sparse flag) follows Lichii: regions backed on demand keep
+    their own memory and still count as written; regions backed whole show the game's memory,
+    except where two regions share it.
+  - Large single 2D images over sparse tiles get host memory per sparse block where the tiles
+    hold data, and only those parts are uploaded. On drivers that can't sample unbound memory
+    (AMD) their empty blocks share one zeroed block, and a GPU render into such an image backs
+    it whole first (`EDEN_NX2_SPARSE_ALIASED`, `EDEN_NX2_SPARSE_UNBACKED`).
+  - `EDEN_NX2_SPARSE_REMAP=0` (listed in `nx2_switches.txt`) goes back to the old behaviour for
+    A/B runs: no 216, blocks from the graphics pool as the GPU writes them.
+  The log shows `nx2:gpu 216:` lines with the tile totals. Needs testing.
+- **Build numbers.** The build number lives in `dist/build_number.txt` and shows in the title
+  bar, the About box and the first log line ("Satsuma Version: Satsuma Build 72"). This is
+  Build 72, after the Build 71 release.
 - **Ocarina of Time ("Green Hat") fixes and new shader support, from Lichii build 75.**
   - Boot: GPU report timestamps on Switch 2 are global-clock nanoseconds, not Maxwell GPU
     ticks, so the game's CPU/GPU time calibration holds. The kernel's address arbiter gains

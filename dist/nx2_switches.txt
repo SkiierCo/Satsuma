@@ -37,6 +37,16 @@ EDEN_NX2_DMA_SCATTER=0
 # GPU-only regions (nx2:gpu 214) get memory as the GPU writes them; =0 backs them whole.
 #EDEN_NX2_GPU_ONLY_LAZY=0
 
+# Sparse texture tiles (nx2:gpu 216): the game maps its own memory into its sparse regions, and GPU
+# writes outside its tiles are dropped. =0 (in your own file, which wins over the line above) turns
+# it off: no 216, sparse regions get graphics memory per block as the GPU writes them, as before.
+#EDEN_NX2_SPARSE_REMAP=0
+# Large single images over sparse tiles get host memory per sparse block. Where the driver can't
+# sample unbound memory (AMD) empty blocks share one zeroed block; =1 shares it on any driver
+# that supports it, =0 never. EDEN_NX2_SPARSE_UNBACKED=1/0 overrides that driver check.
+#EDEN_NX2_SPARSE_ALIASED=1
+#EDEN_NX2_SPARSE_UNBACKED=0
+
 # Per game: EDEN_NX2_VSYNC_HZ_<program ID> overrides EDEN_NX2_VSYNC_HZ for that game.
 # Super Mario Bros. Wonder capped at 67.
 EDEN_NX2_VSYNC_HZ_010015100B514000=67

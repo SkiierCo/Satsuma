@@ -241,7 +241,7 @@ void Init(QWidget* root) {
     const auto processor_count = std::thread::hardware_concurrency();
 
     // info logging
-    LOG_INFO(Frontend, "Satsuma Version: {}", yuzu_build_version);
+    LOG_INFO(Frontend, "Satsuma Version: {} Build {}", yuzu_build_version, Common::g_build_number);
     LogRuntimes();
 #ifdef ARCHITECTURE_x86_64
     const auto& caps = Common::g_cpu_caps;
